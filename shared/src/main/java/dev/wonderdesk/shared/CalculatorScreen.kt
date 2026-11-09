@@ -34,12 +34,13 @@ private fun CalculatorPad() {
     var input by rememberSaveable { mutableStateOf("") }
     var result by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf("") }
+    var degrees by rememberSaveable { mutableStateOf(prefs.getBoolean("degrees", false)) }
     var history by remember {
         mutableStateOf(runCatching { val array = JSONArray(prefs.getString("history", "[]")); (0 until array.length()).map { array.getString(it) } }.getOrDefault(emptyList()))
     }
     fun evaluate() {
         try {
-            result = Expression.format(Expression.evaluate(input)); error = ""
+            result = Expression.format(Expression.evaluate(input, degrees)); error = ""
             history = (listOf("$input = $result") + history).take(50)
             prefs.edit().putString("history", JSONArray(history).toString()).apply()
         } catch (e: Exception) { error = e.message ?: "Invalid expression"; result = "" }
@@ -51,7 +52,11 @@ private fun CalculatorPad() {
             Text(result, Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
             TextButton(onClick = { context.copyText("Calculation result", result) }) { Text("Copy") }
         } }
-        item { Text("Scientific functions use radians. Supports + − * / % ^, parentheses, pi and e.", style = MaterialTheme.typography.bodySmall) }
+        item { Text("Trigonometry uses ${if (degrees) "degrees" else "radians"}. Supports + − * / % ^, parentheses, pi and e.", style = MaterialTheme.typography.bodySmall) }
+        item { Row(Modifier.fillMaxWidth()) {
+            TextButton(onClick = { degrees = false; prefs.edit().putBoolean("degrees", false).apply() }, modifier = Modifier.weight(1f)) { Text(if (!degrees) "✓ Radians" else "Radians") }
+            TextButton(onClick = { degrees = true; prefs.edit().putBoolean("degrees", true).apply() }, modifier = Modifier.weight(1f)) { Text(if (degrees) "✓ Degrees" else "Degrees") }
+        } }
         item { Row(Modifier.fillMaxWidth()) {
             listOf("sqrt(", "sin(", "cos(", "ln(").forEach { key -> TextButton(onClick = { input += key }, Modifier.weight(1f)) { Text(key) } }
         } }

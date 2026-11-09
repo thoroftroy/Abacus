@@ -2,9 +2,13 @@ package dev.wonderdesk.shared
 
 import kotlin.math.*
 
-/** Bounded recursive-descent evaluator. No eval(), scripting, reflection or I/O. */
+/** Bounded recursive-descent evaluator. No eval(), scripting, reflection or I/O.
+ * Trigonometric functions use radians by default; pass degrees=true to interpret
+ * sin/cos/tan arguments as degrees. */
 object Expression {
-    fun evaluate(source: String): Double {
+    fun evaluate(source: String): Double = evaluate(source, degrees = false)
+
+    fun evaluate(source: String, degrees: Boolean): Double {
         require(source.length in 1..512) { "Enter an expression of at most 512 characters" }
         class Parser {
             var at = 0
@@ -43,7 +47,9 @@ object Expression {
                     require(take('(')) { "Use $name(value)" }
                     val n = sum(); require(take(')')) { "Missing closing parenthesis" }
                     return when (name) {
-                        "sin" -> sin(n); "cos" -> cos(n); "tan" -> tan(n)
+                        "sin" -> sin(if (degrees) Math.toRadians(n) else n)
+                        "cos" -> cos(if (degrees) Math.toRadians(n) else n)
+                        "tan" -> tan(if (degrees) Math.toRadians(n) else n)
                         "sqrt" -> sqrt(n); "ln" -> ln(n); "log" -> log10(n); "abs" -> abs(n)
                         else -> error("Unknown function: $name")
                     }
