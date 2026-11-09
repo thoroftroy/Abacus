@@ -17,6 +17,18 @@ import org.json.JSONArray
 
 @Composable
 fun CalculatorScreen() {
+    var converter by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { converter = false }, modifier = Modifier.weight(1f)) { Text(if (!converter) "✓ Calculator" else "Calculator") }
+            TextButton(onClick = { converter = true }, modifier = Modifier.weight(1f)) { Text(if (converter) "✓ Convert" else "Convert") }
+        }
+        if (converter) UnitConversionScreen() else CalculatorPad()
+    }
+}
+
+@Composable
+private fun CalculatorPad() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("calculations", Context.MODE_PRIVATE) }
     var input by rememberSaveable { mutableStateOf("") }
