@@ -1,28 +1,22 @@
 # Abacus for Android
 
-Abacus is a calculator with a unit converter built in. By Rednave.
+A calculator with a unit converter built in. By Rednave.
 
 ## Easiest install and updates
 
 Get App Hub once from https://github.com/thoroftroy/App-Hub/releases, then use it to install and update this app and the rest of the suite. You will not need to download APKs by hand.
-
 ## Install
 
-Requires Android 10 or newer (best on Android 13+).
-
-1. Copy the APK file to your phone (USB, Bluetooth, cloud drive — whatever you like) and tap it.
-2. Allow "install from unknown sources" when asked.
-3. Open the app from your app drawer.
-
+Install the APK, then open the app. Your phone may ask you to allow unknown sources first. Needs Android 10 or newer.
 ## Using Abacus
 
-- Type or tap an expression to calculate it. Results show below the field with a Copy button.
-- Switch between radians and degrees for trigonometry.
-- Open Convert for length, mass and temperature conversions.
-- Past calculations are kept in History; tap one to reuse it, or clear the history.
+- Open the app and type or tap an expression. The answer shows below with a Copy button.
+- Use the degrees/radians switch for trig.
+- The Convert tab handles length, mass and temperature.
+- Past calculations stay in History. Tap one to reuse it, or clear the list.
 
-Conversions use fixed standard factors and are approximate.
+Conversions use fixed standard factors, so treat them as approximate.
 
 ## Look and feel
 
-Open About inside the app to choose between Aqua, Bliss, Dark Bliss and Super, and to adjust motion. Aqua is the default.
+Open About in the app to change the theme or motion. Aqua is the default.
