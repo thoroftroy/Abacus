@@ -1,6 +1,6 @@
 # Abacus for Android
 
-A calculator with a unit converter built in. By Rednave.
+A calculator with a unit converter built in.
 
 ## Easiest install and updates
 
