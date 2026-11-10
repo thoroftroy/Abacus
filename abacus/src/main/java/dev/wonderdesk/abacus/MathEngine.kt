@@ -7,7 +7,10 @@ import kotlin.math.*
  * Pure Kotlin with no Android dependencies so it can be unit tested on the JVM.
  */
 
-class MathError(message: String) : Exception(message)
+class MathError(message: String) : Exception(message) {
+    // Thrown often while plotting and live-previewing; skipping the stack trace keeps that cheap.
+    override fun fillInStackTrace(): Throwable = this
+}
 
 private fun fail(message: String): Nothing = throw MathError(message)
 
