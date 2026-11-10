@@ -1,23 +1,24 @@
-# Abacus for Android
+# Abacus
 
-A calculator with a unit converter built in.
+A scientific calculator with algebra, graphing and unit conversion.
 
-## Easiest install and updates
+## What it does
 
-Get App Hub once from https://github.com/thoroftroy/App-Hub/releases, then use it to install and update this app and the rest of the suite. You will not need to download APKs by hand.
-## Install
+- **Calculate**: a full keypad with live answers as you type, backspace, scientific functions (trig and inverse trig, logs, roots, powers, factorial, nCr, percent) and an Ans key. Tap DEG/RAD to switch angle units. Past results are in History.
+- **Algebra**: solve equations (linear, quadratic with exact surd answers, higher-degree and non-polynomial equations), solve systems like `2x + y = 5; x - y = 1`, solve for a letter, expand, factor, differentiate and integrate. Multiplication can be implied: `2x`, `3(x + 1)`. Tap Show steps to see how it got there.
+- **Graph**: plot up to three functions; drag to move, pinch to zoom, tap to trace values.
+- **Convert**: length, area, volume, mass, temperature, speed, time, data, energy, pressure, angle and fuel economy.
 
-Install the APK, then open the app. Your phone may ask you to allow unknown sources first. Needs Android 10 or newer.
-## Using Abacus
+## Install and update
 
-- Open the app and type or tap an expression. A live answer appears as you type, and = puts the result up top with a Copy button.
-- The keypad has a backspace (⌫) to delete the last character, and C clears.
-- Use the degrees/radians switch for trig.
-- The Convert tab handles length, mass and temperature.
-- Past calculations stay in History. Tap one to reuse it, or clear the list.
+The easiest way is Wonderdesk Apphub: get it once from https://github.com/thoroftroy/App-Hub/releases, then install and update this app and the rest of the suite from there.
 
-Conversions use fixed standard factors, so treat them as approximate.
+Or download the APK from this repository's Releases, open it, and allow installing from that source if your phone asks. Needs Android 10 or newer.
 
 ## Look and feel
 
-Open About in the app to change the theme or motion. Aqua is the default.
+Every Wonderdesk app follows the look you pick in Control Room (Aqua, Bliss, Dark Bliss or Super). You can give this app its own look in its Settings.
+
+## Privacy
+
+Everything stays on your phone. No accounts, ads or tracking.
