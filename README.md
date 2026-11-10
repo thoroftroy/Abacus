@@ -10,7 +10,8 @@ Get App Hub once from https://github.com/thoroftroy/App-Hub/releases, then use i
 Install the APK, then open the app. Your phone may ask you to allow unknown sources first. Needs Android 10 or newer.
 ## Using Abacus
 
-- Open the app and type or tap an expression. The answer shows below with a Copy button.
+- Open the app and type or tap an expression. A live answer appears as you type, and = puts the result up top with a Copy button.
+- The keypad has a backspace (⌫) to delete the last character, and C clears.
 - Use the degrees/radians switch for trig.
 - The Convert tab handles length, mass and temperature.
 - Past calculations stay in History. Tap one to reuse it, or clear the list.
