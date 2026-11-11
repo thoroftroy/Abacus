@@ -1,5 +1,12 @@
 # Abacus changelog
 
+## v0.5.0
+
+- Polish and stability fixes from the suite-wide test pass
+- Works properly in landscape: tabs move to a rail at the side so the content keeps its height, and screens that ran out of room now scroll
+- If the app ever crashes it says so next time it opens and offers to send a report (only the error, app version and phone model, with file names and links removed). Turn on automatic sending in Control Room › Wonderdesk
+- Lists can no longer crash when two items share a name
+
 ## v0.4.0
 
 - Graphing rebuilt to rival Desmos: as many expressions as you like, y = and x = curves, polar r = θ, parametric curves, points, implicit equations like x² + y² = 16, shaded inequalities and sliders
