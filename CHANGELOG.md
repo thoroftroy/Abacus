@@ -1,5 +1,14 @@
 # Abacus changelog
 
+## v0.4.0
+
+- Graphing rebuilt to rival Desmos: as many expressions as you like, y = and x = curves, polar r = θ, parametric curves, points, implicit equations like x² + y² = 16, shaded inequalities and sliders
+- Roots, turning points and intersections are marked; tap a curve to trace it
+- Very large and small conversions read like 6.2 × 10⁻⁷ instead of 6.2×10^-7
+- New Calculator widget that works right on the home screen
+- If the app ever crashes or freezes, a report goes to Control Room so it can be shared and fixed
+- App icon art is larger and fills its tile without being cut off
+
 ## v0.3.1
 
 - Type or paste anything into the new Solve tab: plain maths, symbols copied from a web page, LaTeX, or phrases like “derivative of x² sin x” and “15% of 80”

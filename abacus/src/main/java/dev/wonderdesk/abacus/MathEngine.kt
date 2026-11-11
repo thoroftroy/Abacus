@@ -339,7 +339,8 @@ fun unitFmt(v: Double): String {
     val a = abs(v)
     if (a != 0.0 && (a < 1e-6 || a >= 1e12)) {
         val (m, ex) = "%.6e".format(java.util.Locale.ROOT, v).split('e')
-        return m.trimEnd('0').trimEnd('.') + "×10^" + ex.toInt()
+        val sup = ex.toInt().toString().map { c -> if (c.isDigit()) "⁰¹²³⁴⁵⁶⁷⁸⁹"[c - '0'] else '⁻' }.joinToString("")
+        return m.trimEnd('0').trimEnd('.') + " × 10" + sup
     }
     return java.math.BigDecimal(v).round(java.math.MathContext(10)).stripTrailingZeros().toPlainString()
 }

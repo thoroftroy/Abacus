@@ -441,35 +441,51 @@ private fun SmartExamples(pick: (String) -> Unit) {
 
 /* ========================================== Graph =========================================== */
 
-private val PLOT_COLORS = listOf(Color(0xFF1E7FE8), Color(0xFFE5483C), Color(0xFF2E9E44))
+private val PLOT_COLORS = listOf(Color(0xFF1E7FE8), Color(0xFFE5483C), Color(0xFF2E9E44), Color(0xFF8E44AD), Color(0xFFE67E22), Color(0xFF16A085), Color(0xFFD81B60), Color(0xFF5D4037))
 
 @Composable
 private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean, seed: List<String>?, consumeSeed: () -> Unit) {
     val p = wonderPalette()
+    // Any number of lines: functions, polar, parametric, points, equations, inequalities, slider values.
     val fns = remember {
         mutableStateListOf<String>().apply {
             addAll(runCatching { val a = JSONArray(prefs.getString("graph", "[\"sin(x)\",\"x^2/4 - 1\"]")); (0 until a.length()).map { a.getString(it) } }.getOrDefault(listOf("sin(x)")))
             if (isEmpty()) add("")
         }
     }
-    LaunchedEffect(seed) {
-        if (seed != null) {
-            fns.clear(); fns.addAll(seed.take(3)); consumeSeed()
-        }
+    val hidden = remember { mutableStateListOf<Int>() }
+    val sliders = remember { mutableStateMapOf<String, Double>().apply { runCatching { val o = org.json.JSONObject(prefs.getString("sliders", "{}")!!); o.keys().forEach { k -> put(k, o.getDouble(k)) } } } }
+    LaunchedEffect(seed) { if (seed != null) { fns.clear(); fns.addAll(seed); hidden.clear(); consumeSeed() } }
+    LaunchedEffect(fns.toList(), sliders.toMap()) {
+        prefs.edit().putString("graph", JSONArray(fns.toList()).toString()).putString("sliders", org.json.JSONObject(sliders.toMap()).toString()).apply()
     }
-    LaunchedEffect(fns.toList()) { prefs.edit().putString("graph", JSONArray(fns.toList()).toString()).apply() }
     var cx by rememberSaveable { mutableFloatStateOf(0f) }
     var cy by rememberSaveable { mutableFloatStateOf(0f) }
-    var scale by rememberSaveable { mutableFloatStateOf(40f) } // pixels per unit (in dp-ish units scaled below)
+    var scale by rememberSaveable { mutableFloatStateOf(40f) }
     var trace by remember { mutableStateOf<Offset?>(null) }
+    var expanded by rememberSaveable { mutableStateOf(true) }
     val fnList = fns.toList()
-    val parsed = remember(fnList) { fnList.map { s -> if (s.isBlank()) null else runCatching { MathParser.expression(Smart.normalize(s).removePrefix("y =").removePrefix("y=").trim()) }.getOrNull() } }
-    // Each function is compiled once into a closure; drawing a frame is then just arithmetic.
-    val compiled = remember(parsed, degrees) { parsed.map { n -> n?.let { node -> val vars = variables(node); if (vars.size > 1) null else compileFn(node, vars.firstOrNull() ?: "x", degrees) } } }
+    // definitions like a = 2 set slider values; other free letters get sliders (default 1)
+    val defined = remember(fnList, degrees) { fnList.mapNotNull { l -> (Plot.parse(l, emptyMap(), degrees) as? Plot.Shape.Define) } }
+    val needed = remember(fnList) { fnList.flatMap { Plot.parameters(it) }.toSet() - defined.map { it.name }.toSet() }
+    LaunchedEffect(needed) { needed.forEach { if (it !in sliders) sliders[it] = 1.0 } }
+    val params: Map<String, Double> = sliders.toMap().filterKeys { it in needed } + defined.associate { it.name to it.value }
+    val shapes = remember(fnList, params, degrees) { fnList.map { Plot.parse(it, params, degrees) } }
+    // roots, turning points and crossings, worked out when the view settles
+    var marks by remember { mutableStateOf<List<Pair<Plot.Mark, Int>>>(emptyList()) }
+    var viewW by remember { mutableFloatStateOf(1f) }
+    LaunchedEffect(shapes, cx, cy, scale, hidden.toList(), viewW) {
+        kotlinx.coroutines.delay(250)
+        val left = cx - viewW / 2 / scale; val right = cx + viewW / 2 / scale
+        marks = withContext(Dispatchers.Default) {
+            val fx = shapes.withIndex().filter { it.index !in hidden }.mapNotNull { (i, sh) -> (sh as? Plot.Shape.FnX)?.let { i to it.f } }
+            fx.flatMap { (i, f) -> Plot.marks(f, left.toDouble(), right.toDouble()).map { it to i } } +
+                fx.flatMapIndexed { a, (i, f) -> fx.drop(a + 1).flatMap { (_, g) -> Plot.intersections(f, g, left.toDouble(), right.toDouble()).map { it to i } } }
+        }
+    }
     val labelPaint = remember { android.graphics.Paint().apply { textSize = 28f; isAntiAlias = true } }
     val tracePaint = remember { android.graphics.Paint().apply { textSize = 34f; isAntiAlias = true; color = android.graphics.Color.BLACK } }
-    val traceBg = remember { android.graphics.Paint().apply { color = android.graphics.Color.argb(230, 255, 255, 255); isAntiAlias = true } }
-    val paths = remember { List(3) { Path() } }
+    val traceBg = remember { android.graphics.Paint().apply { color = android.graphics.Color.argb(235, 255, 255, 255); isAntiAlias = true } }
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         val shape = RoundedCornerShape(p.panelRadius)
         Box(Modifier.fillMaxWidth().weight(1f).clip(shape).background(if (p.dark) Color(0xFF15181C) else Color.White).border(1.dp, p.panelBorder, shape)) {
@@ -480,8 +496,7 @@ private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean,
                 .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val oldScale = scale
-                        val newScale = (scale * zoom).coerceIn(2f, 4000f)
-                        // keep the point under the fingers fixed while zooming
+                        val newScale = (scale * zoom).coerceIn(.5f, 20000f)
                         val wx = cx + (centroid.x - size.width / 2) / oldScale
                         val wy = cy - (centroid.y - size.height / 2) / oldScale
                         scale = newScale
@@ -490,95 +505,149 @@ private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean,
                         trace = null
                     }
                 }
-                .pointerInput(Unit) { detectTapGestures(onTap = { trace = if (trace == null) it else null }, onDoubleTap = { scale = (scale * 2).coerceAtMost(4000f) }) }
+                .pointerInput(Unit) { detectTapGestures(onTap = { trace = if (trace == null) it else null }, onDoubleTap = { scale = (scale * 2).coerceAtMost(20000f) }) }
             ) {
                 val w = size.width; val h = size.height
+                viewW = w
                 val cx = cx.toDouble(); val cy = cy.toDouble(); val scale = scale.toDouble()
                 fun sx(x: Double) = ((x - cx) * scale + w / 2).toFloat()
                 fun sy(y: Double) = (h / 2 - (y - cy) * scale).toFloat()
-                // grid step: 1, 2, 5 × 10^k so lines are ~ 60–150 px apart
+                fun wx(px: Float) = cx + (px - w / 2) / scale
+                fun wy(py: Float) = cy - (py - h / 2) / scale
                 val rawStep = 90.0 / scale
                 val mag = 10.0.pow(floor(log10(rawStep)))
                 val step = listOf(1.0, 2.0, 5.0, 10.0).map { it * mag }.first { it >= rawStep }
-                val left = cx - w / 2 / scale; val right = cx + w / 2 / scale
-                val bottom = cy - h / 2 / scale; val top = cy + h / 2 / scale
+                val left = wx(0f); val right = wx(w); val bottom = wy(h); val top = wy(0f)
                 val paint = labelPaint.apply { color = labelColor }
                 var gx = ceil(left / step) * step
-                while (gx <= right) {
-                    drawLine(gridColor, Offset(sx(gx), 0f), Offset(sx(gx), h), 1.5f)
-                    if (abs(gx) > step / 2) drawContext.canvas.nativeCanvas.drawText(fmt(gx), sx(gx) + 4, (sy(0.0) + 30).coerceIn(30f, h - 6), paint)
-                    gx += step
-                }
+                while (gx <= right) { drawLine(gridColor, Offset(sx(gx), 0f), Offset(sx(gx), h), 1.5f); if (abs(gx) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gx), sx(gx) + 4, (sy(0.0) + 30).coerceIn(30f, h - 6), paint); gx += step }
                 var gy = ceil(bottom / step) * step
-                while (gy <= top) {
-                    drawLine(gridColor, Offset(0f, sy(gy)), Offset(w, sy(gy)), 1.5f)
-                    if (abs(gy) > step / 2) drawContext.canvas.nativeCanvas.drawText(fmt(gy), (sx(0.0) + 6).coerceIn(4f, w - 80), sy(gy) - 6, paint)
-                    gy += step
-                }
+                while (gy <= top) { drawLine(gridColor, Offset(0f, sy(gy)), Offset(w, sy(gy)), 1.5f); if (abs(gy) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gy), (sx(0.0) + 6).coerceIn(4f, w - 80), sy(gy) - 6, paint); gy += step }
                 drawLine(axisColor, Offset(sx(0.0), 0f), Offset(sx(0.0), h), 2.5f)
                 drawLine(axisColor, Offset(0f, sy(0.0)), Offset(w, sy(0.0)), 2.5f)
-                compiled.forEachIndexed { i, fn ->
-                    if (fn == null || i > 2) return@forEachIndexed
-                    val path = paths[i].apply { reset() }
-                    var started = false
-                    var lastY = 0.0
-                    val n = (w / 2).toInt()
-                    for (k in 0..n) {
-                        val x = left + (right - left) * k / n
-                        val y = fn(x)
-                        if (!y.isFinite() || abs(y - cy) > (top - bottom) * 50) { started = false; continue }
-                        val py = sy(y)
-                        if (started && abs(y - lastY) * scale > h * 2) started = false // asymptote
-                        if (!started) { path.moveTo(sx(x), py); started = true } else path.lineTo(sx(x), py)
-                        lastY = y
+                shapes.forEachIndexed { i, sh ->
+                    if (i in hidden) return@forEachIndexed
+                    val col = PLOT_COLORS[i % PLOT_COLORS.size]
+                    when (sh) {
+                        is Plot.Shape.FnX -> {
+                            val path = Path(); var started = false; var lastY = 0.0; val n = (w / 2).toInt()
+                            for (k in 0..n) { val x = left + (right - left) * k / n; val y = sh.f(x)
+                                if (!y.isFinite() || abs(y - cy) > (top - bottom) * 50) { started = false; continue }
+                                if (started && abs(y - lastY) * scale > h * 2) started = false
+                                if (!started) { path.moveTo(sx(x), sy(y)); started = true } else path.lineTo(sx(x), sy(y)); lastY = y }
+                            drawPath(path, col, style = Stroke(5f))
+                        }
+                        is Plot.Shape.FnY -> {
+                            val path = Path(); var started = false; val n = (h / 2).toInt()
+                            for (k in 0..n) { val y = bottom + (top - bottom) * k / n; val x = sh.f(y)
+                                if (!x.isFinite()) { started = false; continue }
+                                if (!started) { path.moveTo(sx(x), sy(y)); started = true } else path.lineTo(sx(x), sy(y)) }
+                            drawPath(path, col, style = Stroke(5f))
+                        }
+                        is Plot.Shape.Polar, is Plot.Shape.Param -> {
+                            val path = Path(); var started = false; val n = 1440
+                            val (from, to) = if (sh is Plot.Shape.Polar) sh.from to sh.to else (sh as Plot.Shape.Param).from to sh.to
+                            for (k in 0..n) { val t = from + (to - from) * k / n
+                                val (x, y) = if (sh is Plot.Shape.Polar) { val r = sh.r(t); r * cos(t) to r * sin(t) } else { val ps = sh as Plot.Shape.Param; ps.x(t) to ps.y(t) }
+                                if (!x.isFinite() || !y.isFinite()) { started = false; continue }
+                                if (!started) { path.moveTo(sx(x), sy(y)); started = true } else path.lineTo(sx(x), sy(y)) }
+                            drawPath(path, col, style = Stroke(5f))
+                        }
+                        is Plot.Shape.Points -> sh.pts.forEach { (x, y) -> drawCircle(col, 11f, Offset(sx(x), sy(y))); drawCircle(Color.White, 4f, Offset(sx(x), sy(y))) }
+                        is Plot.Shape.Relation -> {
+                            // marching squares over a coarse screen grid; inequalities are shaded
+                            val cell = 6f; val nx = (w / cell).toInt() + 1; val ny = (h / cell).toInt() + 1
+                            val v = Array(ny) { j -> DoubleArray(nx) { i2 -> sh.f(wx(i2 * cell), wy(j * cell)) } }
+                            val fill = col.copy(alpha = .18f)
+                            val path = Path()
+                            for (j in 0 until ny - 1) for (i2 in 0 until nx - 1) {
+                                val a = v[j][i2]; val b = v[j][i2 + 1]; val c = v[j + 1][i2 + 1]; val d = v[j + 1][i2]
+                                if (sh.op != Plot.Op.EQ) {
+                                    val mid = (a + b + c + d) / 4
+                                    val inside = when (sh.op) { Plot.Op.LT -> mid < 0; Plot.Op.LE -> mid <= 0; Plot.Op.GT -> mid > 0; else -> mid >= 0 }
+                                    if (inside && mid.isFinite()) drawRect(fill, Offset(i2 * cell, j * cell), androidx.compose.ui.geometry.Size(cell + .5f, cell + .5f))
+                                }
+                                if (!(a.isFinite() && b.isFinite() && c.isFinite() && d.isFinite())) continue
+                                val pts = ArrayList<Offset>(4)
+                                fun edge(p1: Double, p2: Double, x1: Float, y1: Float, x2: Float, y2: Float) { if ((p1 < 0) != (p2 < 0)) { val t = (p1 / (p1 - p2)).toFloat(); pts += Offset(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t) } }
+                                val X = i2 * cell; val Y = j * cell
+                                edge(a, b, X, Y, X + cell, Y); edge(b, c, X + cell, Y, X + cell, Y + cell); edge(d, c, X, Y + cell, X + cell, Y + cell); edge(a, d, X, Y, X, Y + cell)
+                                // skip jumps across asymptotes (huge values of opposite sign)
+                                if (pts.size >= 2 && maxOf(abs(a), abs(b), abs(c), abs(d)) < 1e6 / scale.coerceAtLeast(1.0) * 1e3) { path.moveTo(pts[0].x, pts[0].y); path.lineTo(pts[1].x, pts[1].y); if (pts.size == 4) { path.moveTo(pts[2].x, pts[2].y); path.lineTo(pts[3].x, pts[3].y) } }
+                            }
+                            drawPath(path, col, style = Stroke(if (sh.op == Plot.Op.LT || sh.op == Plot.Op.GT) 3f else 5f, pathEffect = if (sh.op == Plot.Op.LT || sh.op == Plot.Op.GT) androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(14f, 10f)) else null))
+                        }
+                        else -> {}
                     }
-                    drawPath(path, PLOT_COLORS[i], style = Stroke(5f))
                 }
+                marks.forEach { (m, i) -> drawCircle(Color(0xFF8A939E).copy(alpha = .9f), 7f, Offset(sx(m.x), sy(m.y))); drawCircle(Color.White, 3f, Offset(sx(m.x), sy(m.y))) }
                 trace?.let { t ->
-                    val idx = compiled.indexOfFirst { it != null }.takeIf { it >= 0 } ?: return@let
-                    val fn = compiled[idx]!!
-                    val x = cx + (t.x - w / 2) / scale
-                    val y = fn(x)
+                    // snap to a nearby marked point, else trace the first visible function
+                    val near = marks.minByOrNull { (m, _) -> (Offset(sx(m.x), sy(m.y)) - t).getDistance() }?.takeIf { (m, _) -> (Offset(sx(m.x), sy(m.y)) - t).getDistance() < 48 }
+                    val (x, y, label, ci) = if (near != null) Quad(near.first.x, near.first.y, near.first.label, near.second) else {
+                        val idx = shapes.indices.firstOrNull { it !in hidden && shapes[it] is Plot.Shape.FnX } ?: return@let
+                        val x = wx(t.x); Quad(x, (shapes[idx] as Plot.Shape.FnX).f(x), "", idx)
+                    }
                     if (y.isFinite()) {
                         drawLine(axisColor.copy(alpha = .5f), Offset(sx(x), 0f), Offset(sx(x), h), 2f)
-                        drawCircle(PLOT_COLORS[idx], 12f, Offset(sx(x), sy(y)))
-                        drawCircle(Color.White, 5f, Offset(sx(x), sy(y)))
-                        val label = "(${fmt((x * 1000).roundToLong() / 1000.0)}, ${fmt((y * 1000).roundToLong() / 1000.0)})"
-                        val tp = tracePaint
-                        val bg = traceBg
-                        val tx = (sx(x) + 16).coerceAtMost(w - tp.measureText(label) - 16)
-                        val ty = (sy(y) - 20).coerceIn(50f, h - 10)
-                        drawContext.canvas.nativeCanvas.drawRoundRect(tx - 10, ty - 38, tx + tp.measureText(label) + 10, ty + 12, 12f, 12f, bg)
-                        drawContext.canvas.nativeCanvas.drawText(label, tx, ty, tp)
+                        drawCircle(PLOT_COLORS[ci % PLOT_COLORS.size], 12f, Offset(sx(x), sy(y))); drawCircle(Color.White, 5f, Offset(sx(x), sy(y)))
+                        val text = (if (label.isNotEmpty()) "$label  " else "") + "(${Plot.nice(x)}, ${Plot.nice(y)})"
+                        val tx = (sx(x) + 16).coerceAtMost(w - tracePaint.measureText(text) - 16); val ty = (sy(y) - 20).coerceIn(50f, h - 10)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(tx - 10, ty - 38, tx + tracePaint.measureText(text) + 10, ty + 12, 12f, 12f, traceBg)
+                        drawContext.canvas.nativeCanvas.drawText(text, tx, ty, tracePaint)
                     }
                 }
             }
             Row(Modifier.align(Alignment.TopEnd).padding(6.dp)) {
-                SmallRound(WonderIcons.ZoomIn, "Zoom in") { scale = (scale * 1.5f).coerceAtMost(4000f) }
-                SmallRound(WonderIcons.ZoomOut, "Zoom out") { scale = (scale / 1.5f).coerceAtLeast(2f) }
+                SmallRound(WonderIcons.ZoomIn, "Zoom in") { scale = (scale * 1.5f).coerceAtMost(20000f) }
+                SmallRound(WonderIcons.ZoomOut, "Zoom out") { scale = (scale / 1.5f).coerceAtLeast(.5f) }
                 SmallRound(WonderIcons.Home, "Reset view") { cx = 0f; cy = 0f; scale = 40f; trace = null }
+                SmallRound(if (expanded) WonderIcons.ExpandMore else WonderIcons.ExpandLess, if (expanded) "Hide list" else "Show list") { expanded = !expanded }
             }
-            Text("Drag to move · pinch to zoom · tap to trace", Modifier.align(Alignment.BottomStart).padding(8.dp), style = MaterialTheme.typography.labelSmall, color = p.secondaryText)
+            Text("Drag · pinch · tap a curve or a grey point", Modifier.align(Alignment.BottomStart).padding(8.dp).clip(RoundedCornerShape(6.dp)).background(p.window.copy(alpha = .85f)).padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = p.secondaryText)
         }
-        Panel {
-            fns.forEachIndexed { i, f ->
-                if (i > 0) PanelDivider(0.dp)
-                Row(Modifier.padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(14.dp).clip(CircleShape).background(PLOT_COLORS[i]))
-                    Text("  y =", style = MaterialTheme.typography.titleMedium)
-                    androidx.compose.foundation.text.BasicTextField(f, { fns[i] = it }, Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 14.dp), singleLine = true,
-                        textStyle = MaterialTheme.typography.titleMedium.copy(color = if (f.isNotBlank() && parsed[i] == null) p.danger else p.text),
-                        cursorBrush = androidx.compose.ui.graphics.SolidColor(p.accent), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
-                    if (fns.size > 1) IconButton(onClick = { fns.removeAt(i) }) { Icon(WonderIcons.Close, "Remove", tint = p.secondaryText) }
+        if (expanded) Panel(Modifier.heightIn(max = 300.dp)) {
+            LazyColumn {
+                itemsIndexed(fns.toList()) { i, f ->
+                    if (i > 0) PanelDivider(0.dp)
+                    val sh = shapes.getOrNull(i)
+                    Row(Modifier.padding(start = 8.dp, end = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(22.dp).clip(CircleShape).background(if (i in hidden) Color.Transparent else PLOT_COLORS[i % PLOT_COLORS.size])
+                            .border(2.dp, PLOT_COLORS[i % PLOT_COLORS.size], CircleShape).clickable { if (i in hidden) hidden.remove(i) else hidden.add(i) })
+                        Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp)) {
+                            androidx.compose.foundation.text.BasicTextField(f, { fns[i] = it }, Modifier.fillMaxWidth(), singleLine = true,
+                                textStyle = MaterialTheme.typography.titleMedium.copy(color = if (sh is Plot.Shape.Fail) p.danger else p.text),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(p.accent), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                                decorationBox = { inner -> if (f.isEmpty()) Text("y = …, r = …, (x, y), x² + y² = 4, y < x…", color = p.secondaryText, style = MaterialTheme.typography.bodyMedium); inner() })
+                            when (sh) {
+                                is Plot.Shape.Fail -> Text(sh.message, style = MaterialTheme.typography.labelSmall, color = p.danger, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                is Plot.Shape.Define -> Slider(sh.value.toFloat().coerceIn(-10f, 10f), { v -> fns[i] = "${sh.name} = ${Plot.nice(v.toDouble())}" }, valueRange = -10f..10f)
+                                else -> {}
+                            }
+                        }
+                        IconButton(onClick = { fns.removeAt(i); hidden.remove(i); if (fns.isEmpty()) fns.add("") }) { Icon(WonderIcons.Close, "Remove", tint = p.secondaryText) }
+                    }
                 }
-            }
-            if (fns.size < 3) {
-                PanelDivider(0.dp)
-                ListRow("Add function", leading = { Icon(WonderIcons.AddCircle, null, tint = p.accent) }, onClick = { fns.add("") })
+                // sliders for letters that aren't defined anywhere
+                val free = needed.sorted()
+                items(free.size) { k ->
+                    val name = free[k]; val v = sliders[name] ?: 1.0
+                    PanelDivider(0.dp)
+                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("$name = ${Plot.nice(v)}", Modifier.width(92.dp), style = MaterialTheme.typography.titleSmall)
+                        Slider(v.toFloat(), { sliders[name] = (it * 20).roundToInt() / 20.0 }, Modifier.weight(1f), valueRange = -10f..10f)
+                    }
+                }
+                item {
+                    PanelDivider(0.dp)
+                    ListRow("Add expression", leading = { Icon(WonderIcons.AddCircle, null, tint = p.accent) }, onClick = { fns.add("") })
+                }
             }
         }
     }
 }
+
+private data class Quad(val x: Double, val y: Double, val label: String, val i: Int)
 
 @Composable
 private fun SmallRound(icon: androidx.compose.ui.graphics.vector.ImageVector, desc: String, onClick: () -> Unit) {
@@ -619,7 +688,7 @@ private fun ConverterTab(prefs: android.content.SharedPreferences) {
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     Box(Modifier.size(44.dp).clip(CircleShape).background(p.accent).clickable { val t = fromIndex; fromIndex = toIndex; toIndex = t
-                        result?.getOrNull()?.let { value = unitFmt(it) } }, contentAlignment = Alignment.Center) {
+                        result?.getOrNull()?.let { value = it.toBigDecimal().round(java.math.MathContext(10)).stripTrailingZeros().toPlainString().let { s -> if (s.length > 24) "%.6e".format(java.util.Locale.ROOT, it).replace("e", "*10^") else s } } }, contentAlignment = Alignment.Center) {
                         Icon(WonderIcons.SwapVert, "Swap units", tint = p.onAccent)
                     }
                 }
