@@ -520,9 +520,9 @@ private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean,
                 val left = wx(0f); val right = wx(w); val bottom = wy(h); val top = wy(0f)
                 val paint = labelPaint.apply { color = labelColor }
                 var gx = ceil(left / step) * step
-                while (gx <= right) { drawLine(gridColor, Offset(sx(gx), 0f), Offset(sx(gx), h), 1.5f); if (abs(gx) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gx), sx(gx) + 4, (sy(0.0) + 30).coerceIn(30f, h - 6), paint); gx += step }
+                while (gx <= right) { drawLine(gridColor, Offset(sx(gx), 0f), Offset(sx(gx), h), 1.5f); if (abs(gx) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gx), sx(gx) + 4, (sy(0.0) + 30).coerceIn(30f, maxOf(30f, h - 6)), paint); gx += step }
                 var gy = ceil(bottom / step) * step
-                while (gy <= top) { drawLine(gridColor, Offset(0f, sy(gy)), Offset(w, sy(gy)), 1.5f); if (abs(gy) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gy), (sx(0.0) + 6).coerceIn(4f, w - 80), sy(gy) - 6, paint); gy += step }
+                while (gy <= top) { drawLine(gridColor, Offset(0f, sy(gy)), Offset(w, sy(gy)), 1.5f); if (abs(gy) > step / 2) drawContext.canvas.nativeCanvas.drawText(Plot.nice(gy), (sx(0.0) + 6).coerceIn(4f, maxOf(4f, w - 80)), sy(gy) - 6, paint); gy += step }
                 drawLine(axisColor, Offset(sx(0.0), 0f), Offset(sx(0.0), h), 2.5f)
                 drawLine(axisColor, Offset(0f, sy(0.0)), Offset(w, sy(0.0)), 2.5f)
                 shapes.forEachIndexed { i, sh ->
@@ -592,7 +592,7 @@ private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean,
                         drawLine(axisColor.copy(alpha = .5f), Offset(sx(x), 0f), Offset(sx(x), h), 2f)
                         drawCircle(PLOT_COLORS[ci % PLOT_COLORS.size], 12f, Offset(sx(x), sy(y))); drawCircle(Color.White, 5f, Offset(sx(x), sy(y)))
                         val text = (if (label.isNotEmpty()) "$label  " else "") + "(${Plot.nice(x)}, ${Plot.nice(y)})"
-                        val tx = (sx(x) + 16).coerceAtMost(w - tracePaint.measureText(text) - 16); val ty = (sy(y) - 20).coerceIn(50f, h - 10)
+                        val tx = (sx(x) + 16).coerceAtMost(w - tracePaint.measureText(text) - 16); val ty = (sy(y) - 20).coerceIn(50f, maxOf(50f, h - 10))
                         drawContext.canvas.nativeCanvas.drawRoundRect(tx - 10, ty - 38, tx + tracePaint.measureText(text) + 10, ty + 12, 12f, 12f, traceBg)
                         drawContext.canvas.nativeCanvas.drawText(text, tx, ty, tracePaint)
                     }
