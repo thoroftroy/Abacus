@@ -268,6 +268,7 @@ private fun pretty(s: String) = s.replace("*", "×").replace("/", "÷").replace(
 @Composable
 private fun CalcKey(k: Key, modifier: Modifier, small: Boolean = false, onClick: () -> Unit) {
     val p = wonderPalette()
+    val keyView = androidx.compose.ui.platform.LocalView.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val (top, bottom, text) = when (k.kind) {
@@ -282,7 +283,7 @@ private fun CalcKey(k: Key, modifier: Modifier, small: Boolean = false, onClick:
         modifier.clip(shape)
             .background(Brush.verticalGradient(if (pressed) listOf(bottom, top) else listOf(top, bottom)))
             .border(1.dp, if (p.dark) Color.Black.copy(alpha = .4f) else Color(0xFF8D99A6).copy(alpha = .7f), shape)
-            .clickable(interaction, LocalIndication()) { onClick() }
+            .clickable(interaction, LocalIndication()) { keyView.tick(); onClick() }
             .semantics { contentDescription = k.desc },
         contentAlignment = Alignment.Center
     ) {
