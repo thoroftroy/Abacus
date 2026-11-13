@@ -1,9 +1,13 @@
 # Abacus changelog
 
+## v0.5.4
+
+- New Tools tab: programmer number bases (hex, octal, binary, bitwise AND/OR/XOR and shifts), days between dates and date maths, tip and bill splitting, discounts with tax, and loan or mortgage repayments. Tap any result to copy it
+- Fixes from a full round of stress testing on every screen
+
 ## v0.5.3
 
 - Tap the tab you're already on to glide back to the top of its list
-- New Tools tab: programmer number bases (hex, octal, binary, bitwise AND/OR/XOR and shifts), days between dates and date maths, tip and bill splitting, discounts with tax, and loan or mortgage repayments. Tap any result to copy it
 
 ## v0.5.2
 
