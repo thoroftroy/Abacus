@@ -84,9 +84,10 @@ fun AbacusApp() {
             WonderTab("algebra", "Solve", WonderIcons.Functions),
             WonderTab("graph", "Graph", WonderIcons.ShowChart),
             WonderTab("convert", "Convert", WonderIcons.SwapHoriz),
+            WonderTab("tools", "Tools", WonderIcons.Straighten),
         ),
         selectedTab = tab, onTab = setTab,
-        title = when (tab) { "algebra" -> "Solve"; "graph" -> "Graph"; "convert" -> "Convert"; else -> "Abacus" },
+        title = when (tab) { "algebra" -> "Solve"; "graph" -> "Graph"; "convert" -> "Convert"; "tools" -> "Tools"; else -> "Abacus" },
         actions = {
             if (tab == "calc" || tab == "algebra") ToolbarButton(WonderIcons.ContentPaste, "Paste", {
                 val text = context.pasteText()
@@ -118,6 +119,7 @@ fun AbacusApp() {
                 toSolve = { algebraInput = it; setTab("algebra") })
             "algebra" -> SmartTab(algebraInput, { algebraInput = it }, degrees) { fns -> graphSeed = fns; setTab("graph") }
             "graph" -> GraphTab(prefs, degrees, graphSeed) { graphSeed = null }
+            "tools" -> ToolsTab()
             else -> ConverterTab(prefs)
         }
     }
