@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.3
+
+- Tap the tab you're already on to glide back to the top of its list
+
 ## v0.5.2
 
 - Keys give a light tap you can feel
