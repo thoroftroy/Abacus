@@ -67,6 +67,7 @@ fun AbacusApp() {
     var tab by rememberSaveable { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
     var showHistory by remember { mutableStateOf(false) }
     var degrees by remember { mutableStateOf(prefs.getBoolean("degrees", false)) }
+    var showFractions by remember { mutableStateOf(prefs.getBoolean("fractions", true)) }
     var history by remember { mutableStateOf(loadHistory(prefs)) }
     var calcInput by rememberSaveable { mutableStateOf("") }
     var algebraInput by rememberSaveable { mutableStateOf("") }
@@ -107,6 +108,9 @@ fun AbacusApp() {
                 SwitchRow("Use degrees for trigonometry", degrees, { degrees = it; prefs.edit().putBoolean("degrees", it).apply() },
                     subtitle = if (degrees) "sin(90) = 1" else "Radians: sin(π/2) = 1", icon = WonderIcons.Straighten, tint = Color(0xFFE08A1E))
                 PanelDivider()
+                SwitchRow("Show fractions", showFractions, { showFractions = it; prefs.edit().putBoolean("fractions", it).apply() },
+                    subtitle = if (showFractions) "Exact: 1/3 ≈ 0.333" else "Decimals only", icon = WonderIcons.Functions, tint = Color(0xFF1E7FE8))
+                PanelDivider()
                 ListRow("Clear calculation history", icon = WonderIcons.DeleteSweep, danger = true, onClick = {
                     history = emptyList(); prefs.edit().remove("history").apply()
                 })
@@ -115,7 +119,9 @@ fun AbacusApp() {
     ) {
         toastRef.value = LocalToast.current
         when (tab) {
-            "calc" -> CalculatorTab(calcInput, { calcInput = it }, degrees, { degrees = it; prefs.edit().putBoolean("degrees", it).apply() }, history.firstOrNull()?.substringAfterLast(" = "), addHistory,
+            "calc" -> CalculatorTab(calcInput, { calcInput = it }, degrees, { degrees = it; prefs.edit().putBoolean("degrees", it).apply() },
+                showFractions, { showFractions = it; prefs.edit().putBoolean("fractions", it).apply() },
+                history.firstOrNull()?.substringAfterLast(" = "), addHistory,
                 toSolve = { algebraInput = it; setTab("algebra") })
             "algebra" -> SmartTab(algebraInput, { algebraInput = it }, degrees) { fns -> graphSeed = fns; setTab("graph") }
             "graph" -> GraphTab(prefs, degrees, graphSeed) { graphSeed = null }
@@ -138,7 +144,7 @@ private enum class KeyKind { Digit, Op, Fn, Equals, Clear }
 private data class Key(val label: String, val insert: String, val kind: KeyKind, val desc: String = label)
 
 @Composable
-private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Boolean, setDegrees: (Boolean) -> Unit, lastAnswer: String?, addHistory: (String, String) -> Unit, toSolve: (String) -> Unit) {
+private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Boolean, setDegrees: (Boolean) -> Unit, showFractions: Boolean, setShowFractions: (Boolean) -> Unit, lastAnswer: String?, addHistory: (String, String) -> Unit, toSolve: (String) -> Unit) {
     val context = LocalContext.current
     val toast = LocalToast.current
     var result by rememberSaveable { mutableStateOf<String?>(null) }
@@ -147,10 +153,11 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
     val env = remember(lastAnswer) { lastAnswer?.let { a -> runCatching { mapOf("ans" to Evaluator().eval(MathParser.expression(a.replace("×10^", "*10^")))) }.getOrNull() } ?: emptyMap() }
     fun displayFor(v: Double): String {
         val f = fmt(v)
+        if (!showFractions) return f
         val n = nice(v)
         return if (n != f && '/' in n) "$n ≈ $f" else f
     }
-    val preview = remember(input, degrees, env) {
+    val preview = remember(input, degrees, env, showFractions) {
         if (input.isBlank()) null else runCatching {
             val v = Evaluator(degrees, env).eval(MathParser.expression(input))
             displayFor(v)
@@ -221,6 +228,9 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { setDegrees(!degrees) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                     Text(if (degrees) "DEG" else "RAD", color = lcd.second.copy(alpha = .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                }
+                TextButton(onClick = { setShowFractions(!showFractions) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(if (showFractions) "1/3" else "0.33", color = lcd.second.copy(alpha = if (showFractions) .9f else .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = { sci = !sci; context.prefs("abacus").edit().putBoolean("sci", sci).apply() }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {

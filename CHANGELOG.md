@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.10
+
+- New fraction toggle (1/3) in the display: switch results between exact fractions (“1/3 ≈ 0.333”) and decimals only, also in Settings
+
 ## v0.5.9
 
 - Calculator now shows fractions: results like 1/3 display as “1/3 ≈ 0.333333333333” instead of decimal only
