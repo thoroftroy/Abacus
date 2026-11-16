@@ -145,10 +145,15 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var sci by rememberSaveable { mutableStateOf(context.prefs("abacus").getBoolean("sci", true)) }
     val env = remember(lastAnswer) { lastAnswer?.let { a -> runCatching { mapOf("ans" to Evaluator().eval(MathParser.expression(a.replace("×10^", "*10^")))) }.getOrNull() } ?: emptyMap() }
+    fun displayFor(v: Double): String {
+        val f = fmt(v)
+        val n = nice(v)
+        return if (n != f && '/' in n) "$n ≈ $f" else f
+    }
     val preview = remember(input, degrees, env) {
         if (input.isBlank()) null else runCatching {
             val v = Evaluator(degrees, env).eval(MathParser.expression(input))
-            fmt(v)
+            displayFor(v)
         }.getOrNull()
     }
     fun evaluate() {
@@ -158,7 +163,7 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             if (!v.isFinite()) throw MathError("The result is too large")
             val r = fmt(v)
             addHistory(input, r)
-            result = r; error = null
+            result = displayFor(v); error = null
         } catch (e: MathError) { error = e.message; result = null
         } catch (e: Exception) { error = "That doesn't look like a complete calculation"; result = null }
     }
@@ -214,11 +219,13 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (degrees) "DEG" else "RAD", color = lcd.second.copy(alpha = .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { setDegrees(!degrees) }.padding(4.dp))
+                TextButton(onClick = { setDegrees(!degrees) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(if (degrees) "DEG" else "RAD", color = lcd.second.copy(alpha = .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                }
                 Spacer(Modifier.weight(1f))
-                Text(if (sci) "Basic" else "Scientific", color = p.accent, style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).clickable { sci = !sci; context.prefs("abacus").edit().putBoolean("sci", sci).apply() }.padding(4.dp))
+                TextButton(onClick = { sci = !sci; context.prefs("abacus").edit().putBoolean("sci", sci).apply() }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(if (sci) "Basic" else "Scientific", color = p.accent, style = MaterialTheme.typography.labelLarge)
+                }
             }
             val scroll = rememberScrollState()
             LaunchedEffect(input) { scroll.scrollTo(scroll.maxValue) }

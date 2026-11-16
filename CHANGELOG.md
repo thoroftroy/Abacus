@@ -1,5 +1,10 @@
 # Abacus changelog
 
+## v0.5.9
+
+- Calculator now shows fractions: results like 1/3 display as “1/3 ≈ 0.333333333333” instead of decimal only
+- Fixed the RAD/DEG (and Basic/Scientific) toggle not responding — now a proper button with a full touch target
+
 ## v0.5.8
 
 - Lighter on the battery: in the Super look the drifting sparkles settle after a few seconds without a touch (the next tap wakes them), so a screen you're reading no longer redraws 25 times a second
