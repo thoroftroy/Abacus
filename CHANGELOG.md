@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.17
+
+- Settings are grouped under clear headings: calculator, keypad and display, history
+
 ## v0.5.16
 
 - New settings: which tab opens first, and keep the screen on

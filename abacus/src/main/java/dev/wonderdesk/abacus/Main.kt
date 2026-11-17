@@ -117,7 +117,8 @@ fun AbacusApp() {
                 var digits by remember { mutableIntStateOf(prefs.getInt("digits", 12).also { calcDigits = it }) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Digits shown in answers", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(6, 8, 10, 12, 15).forEach { v -> Chip("$v", digits == v, { digits = v; calcDigits = v; prefs.edit().putInt("digits", v).apply() }) } } }
-                PanelDivider()
+            }
+            Panel(title = "Keypad and display") {
                 var dtab by remember { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Open on", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("calc" to "Calculate", "algebra" to "Solve", "graph" to "Graph", "convert" to "Convert", "tools" to "Tools").forEach { (v, n) -> Chip(n, dtab == v, { dtab = v; prefs.edit().putString("tab", v).apply() }) } } }
@@ -130,7 +131,8 @@ fun AbacusApp() {
                 PanelDivider()
                 var lcd by remember { mutableIntStateOf(prefs.getInt("lcdScale", 100)) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Answer text size: $lcd%", style = MaterialTheme.typography.labelLarge); Slider(lcd.toFloat(), { lcd = it.toInt() }, valueRange = 60f..140f, onValueChangeFinished = { prefs.edit().putInt("lcdScale", lcd).apply() }) }
-                PanelDivider()
+            }
+            Panel(title = "History") {
                 var hist by remember { mutableIntStateOf(prefs.getInt("histMax", 100)) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Remember the last calculations", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(20, 50, 100, 300, 1000).forEach { v -> Chip("$v", hist == v, { hist = v; prefs.edit().putInt("histMax", v).apply() }) } } }
