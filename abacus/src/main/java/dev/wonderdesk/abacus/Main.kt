@@ -728,7 +728,7 @@ private fun ConverterTab(prefs: android.content.SharedPreferences) {
                     }) {
                         Text("Result", style = MaterialTheme.typography.labelMedium, color = p.secondaryText)
                         Text(
-                            when { result == null -> "—"; result.isFailure -> result.exceptionOrNull()?.message ?: "—"; else -> unitFmt(result.getOrThrow()) },
+                            when { result == null -> "…"; result.isFailure -> result.exceptionOrNull()?.message ?: "Conversion failed"; else -> unitFmt(result.getOrThrow()) },
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis,
                             color = if (result?.isFailure == true) p.danger else p.text
                         )
@@ -744,7 +744,7 @@ private fun ConverterTab(prefs: android.content.SharedPreferences) {
                 val v = runCatching { Units.convert(amount, cat, cat.units[fromIndex], u) }.getOrNull()
                 Row(Modifier.fillMaxWidth().clickable { toIndex = i }.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text(u.name, Modifier.weight(1f), color = if (i == toIndex) p.accent else p.text)
-                    Text((v?.let { unitFmt(it) } ?: "—") + " " + u.symbol, color = p.secondaryText)
+                    Text((v?.let { unitFmt(it) } ?: "…") + " " + u.symbol, color = p.secondaryText)
                 }
             }
         }

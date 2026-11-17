@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.12
+
+- Empty converter results show dots while there is nothing to convert yet
+
 ## v0.5.11
 
 - The result now stays on one line and shrinks to fit, so long fractions fit inside the display instead of getting clipped. Header buttons are slimmer to give the number room
