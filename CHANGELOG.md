@@ -1,5 +1,10 @@
 # Abacus changelog
 
+## v0.5.15
+
+- Stays upright on phones because the keypad is not usable sideways. Turn on Rotate with the phone in Settings to change that
+- Text size and accent colour chosen in Control Room now apply here
+
 ## v0.5.14
 
 - New settings for digits shown in answers, key tick, answer text size and how many calculations are remembered
