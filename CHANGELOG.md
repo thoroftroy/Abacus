@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.16
+
+- New settings: which tab opens first, and keep the screen on
+
 ## v0.5.15
 
 - Stays upright on phones because the keypad is not usable sideways. Turn on Rotate with the phone in Settings to change that

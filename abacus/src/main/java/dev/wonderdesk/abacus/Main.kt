@@ -65,6 +65,8 @@ fun AbacusApp() {
     val context = LocalContext.current
     val prefs = remember { context.prefs("abacus") }
     calcDigits = prefs.getInt("digits", 12)
+    val hostV = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(Unit) { hostV.keepScreenOn = prefs.getBoolean("keepAwake", false); onDispose { hostV.keepScreenOn = false } }
     var tab by rememberSaveable { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
     var showHistory by remember { mutableStateOf(false) }
     var degrees by remember { mutableStateOf(prefs.getBoolean("degrees", false)) }
@@ -115,6 +117,13 @@ fun AbacusApp() {
                 var digits by remember { mutableIntStateOf(prefs.getInt("digits", 12).also { calcDigits = it }) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Digits shown in answers", style = MaterialTheme.typography.labelLarge)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(6, 8, 10, 12, 15).forEach { v -> Chip("$v", digits == v, { digits = v; calcDigits = v; prefs.edit().putInt("digits", v).apply() }) } } }
+                PanelDivider()
+                var dtab by remember { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
+                Column(Modifier.padding(16.dp, 10.dp)) { Text("Open on", style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("calc" to "Calculate", "algebra" to "Solve", "graph" to "Graph", "convert" to "Convert", "tools" to "Tools").forEach { (v, n) -> Chip(n, dtab == v, { dtab = v; prefs.edit().putString("tab", v).apply() }) } } }
+                PanelDivider()
+                var awakeA by remember { mutableStateOf(prefs.getBoolean("keepAwake", false)) }
+                SwitchRow("Keep the screen on", awakeA, { awakeA = it; prefs.edit().putBoolean("keepAwake", it).apply() }, icon = WonderIcons.Visibility, tint = Color(0xFF8E44AD))
                 PanelDivider()
                 var tickK by remember { mutableStateOf(prefs.getBoolean("tickKeys", true)) }
                 SwitchRow("Tick when you press a key", tickK, { tickK = it; prefs.edit().putBoolean("tickKeys", it).apply() }, icon = WonderIcons.VolumeUp, tint = Color(0xFF2E9E44))
