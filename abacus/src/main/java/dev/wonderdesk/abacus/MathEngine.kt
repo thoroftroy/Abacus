@@ -47,7 +47,7 @@ private sealed class Tok {
 
 private fun tokenize(src: String): List<Tok> {
     val s = src.replace('×', '*').replace('÷', '/').replace('−', '-').replace('·', '*').replace("**", "^")
-        .replace('–', '-').replace("√", " sqrt ").replace("∛", " cbrt ")
+        .replace('\u2013', '-').replace("√", " sqrt ").replace("∛", " cbrt ")
     val out = mutableListOf<Tok>()
     var i = 0
     while (i < s.length) {

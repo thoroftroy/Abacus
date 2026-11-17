@@ -34,7 +34,7 @@ object Smart {
         var s = raw.trim()
         // invisible and look-alike characters from web pages and PDFs
         s = s.replace(' ', ' ').replace(' ', ' ').replace(' ', ' ').replace("​", "")
-            .replace('−', '-').replace('–', '-').replace('—', '-').replace('×', '*').replace('∗', '*').replace('⋅', '*').replace('·', '*').replace('÷', '/').replace('∕', '/')
+            .replace('−', '-').replace('\u2013', '-').replace('\u2014', '-').replace('×', '*').replace('∗', '*').replace('⋅', '*').replace('·', '*').replace('÷', '/').replace('∕', '/')
             .replace('“', ' ').replace('”', ' ').replace('’', '\'').replace("≠", "!=").replace("≈", "=").replace("：", ":")
         VULGAR.forEach { (k, v) -> s = s.replace(k, v) }
         // LaTeX
