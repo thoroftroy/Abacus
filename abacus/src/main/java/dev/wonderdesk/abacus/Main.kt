@@ -64,6 +64,7 @@ private const val ABOUT = "Abacus is a scientific calculator with algebra, graph
 fun AbacusApp() {
     val context = LocalContext.current
     val prefs = remember { context.prefs("abacus") }
+    calcDigits = prefs.getInt("digits", 12)
     var tab by rememberSaveable { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
     var showHistory by remember { mutableStateOf(false) }
     var degrees by remember { mutableStateOf(prefs.getBoolean("degrees", false)) }
@@ -75,7 +76,7 @@ fun AbacusApp() {
     val toastRef = remember { mutableStateOf<(String) -> Unit>({}) }
     val setTab: (String) -> Unit = { tab = it; prefs.edit().putString("tab", it).apply() }
     val addHistory: (String, String) -> Unit = { expr, res ->
-        history = (listOf("$expr = $res") + history.filter { it != "$expr = $res" }).take(100)
+        history = (listOf("$expr = $res") + history.filter { it != "$expr = $res" }).take(prefs.getInt("histMax", 100))
         prefs.edit().putString("history", JSONArray(history).toString()).apply()
     }
     WonderApp(
@@ -110,6 +111,20 @@ fun AbacusApp() {
                 PanelDivider()
                 SwitchRow("Show fractions", showFractions, { showFractions = it; prefs.edit().putBoolean("fractions", it).apply() },
                     subtitle = if (showFractions) "Exact: 1/3 ≈ 0.333" else "Decimals only", icon = WonderIcons.Functions, tint = Color(0xFF1E7FE8))
+                PanelDivider()
+                var digits by remember { mutableIntStateOf(prefs.getInt("digits", 12).also { calcDigits = it }) }
+                Column(Modifier.padding(16.dp, 10.dp)) { Text("Digits shown in answers", style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(6, 8, 10, 12, 15).forEach { v -> Chip("$v", digits == v, { digits = v; calcDigits = v; prefs.edit().putInt("digits", v).apply() }) } } }
+                PanelDivider()
+                var tickK by remember { mutableStateOf(prefs.getBoolean("tickKeys", true)) }
+                SwitchRow("Tick when you press a key", tickK, { tickK = it; prefs.edit().putBoolean("tickKeys", it).apply() }, icon = WonderIcons.VolumeUp, tint = Color(0xFF2E9E44))
+                PanelDivider()
+                var lcd by remember { mutableIntStateOf(prefs.getInt("lcdScale", 100)) }
+                Column(Modifier.padding(16.dp, 10.dp)) { Text("Answer text size: $lcd%", style = MaterialTheme.typography.labelLarge); Slider(lcd.toFloat(), { lcd = it.toInt() }, valueRange = 60f..140f, onValueChangeFinished = { prefs.edit().putInt("lcdScale", lcd).apply() }) }
+                PanelDivider()
+                var hist by remember { mutableIntStateOf(prefs.getInt("histMax", 100)) }
+                Column(Modifier.padding(16.dp, 10.dp)) { Text("Remember the last calculations", style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(20, 50, 100, 300, 1000).forEach { v -> Chip("$v", hist == v, { hist = v; prefs.edit().putInt("histMax", v).apply() }) } } }
                 PanelDivider()
                 ListRow("Clear calculation history", icon = WonderIcons.DeleteSweep, danger = true, onClick = {
                     history = emptyList(); prefs.edit().remove("history").apply()
@@ -247,7 +262,7 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             val big = result ?: preview
             // One line that shrinks to fit: fraction results are long, and two lines
             // at display line heights overflow the fixed box and get clipped.
-            val fs = autoSize(big ?: "", result != null)
+            val fs = autoSize(big ?: "", result != null) * (context.prefs("abacus").getInt("lcdScale", 100) / 100f)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (result != null) IconButton(onClick = { context.copyText("Result", result!!); toast("Copied $result") }) { Icon(WonderIcons.ContentCopy, "Copy result", tint = lcd.second.copy(alpha = .6f)) }
                 Text(
@@ -312,7 +327,7 @@ private fun CalcKey(k: Key, modifier: Modifier, small: Boolean = false, onClick:
         modifier.clip(shape)
             .background(Brush.verticalGradient(if (pressed) listOf(bottom, top) else listOf(top, bottom)))
             .border(1.dp, if (p.dark) Color.Black.copy(alpha = .4f) else Color(0xFF8D99A6).copy(alpha = .7f), shape)
-            .clickable(interaction, LocalIndication()) { keyView.tick(); onClick() }
+            .clickable(interaction, LocalIndication()) { if (keyView.context.prefs("abacus").getBoolean("tickKeys", true)) keyView.tick(); onClick() }
             .semantics { contentDescription = k.desc },
         contentAlignment = Alignment.Center
     ) {

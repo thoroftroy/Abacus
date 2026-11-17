@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.14
+
+- New settings for digits shown in answers, key tick, answer text size and how many calculations are remembered
+
 ## v0.5.13
 
 - Loading screens now say what they are doing instead of showing a bare spinner

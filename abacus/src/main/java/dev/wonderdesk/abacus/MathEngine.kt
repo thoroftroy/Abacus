@@ -318,7 +318,10 @@ fun permutations(n: Double, r: Double): Double {
 
 /* ---------------------------------------- formatting --------------------------------------- */
 
-/** Decimal for the calculator: up to 12 significant digits, scientific when huge or tiny. */
+/** How many significant digits the calculator shows. Set from Abacus settings. */
+@Volatile var calcDigits = 12
+
+/** Decimal for the calculator: up to [calcDigits] significant digits, scientific when huge or tiny. */
 fun fmt(v: Double): String {
     if (v.isNaN()) return "undefined"
     if (v.isInfinite()) return if (v > 0) "∞" else "-∞"
@@ -330,7 +333,7 @@ fun fmt(v: Double): String {
         val mant = m.trimEnd('0').trimEnd('.')
         return "$mant×10^${e.toInt()}"
     }
-    return java.math.BigDecimal(v).round(java.math.MathContext(12)).stripTrailingZeros().toPlainString().let { if (it == "-0") "0" else it }
+    return java.math.BigDecimal(v).round(java.math.MathContext(calcDigits)).stripTrailingZeros().toPlainString().let { if (it == "-0") "0" else it }
 }
 
 /** Converter display: 10 significant digits, scientific when very large or small. */
