@@ -1,5 +1,10 @@
 # Abacus changelog
 
+## v0.5.13
+
+- Loading screens now say what they are doing instead of showing a bare spinner
+- Wording tidied so no sentence needs a dash
+
 ## v0.5.12
 
 - Empty converter results show dots while there is nothing to convert yet

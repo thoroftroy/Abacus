@@ -393,7 +393,7 @@ private fun SmartTab(input: String, setInput: (String) -> Unit, degrees: Boolean
         val r = result
         when {
             input.isBlank() -> SmartExamples { ex -> setInput(ex); task = Task.Auto }
-            r == null || (working && r.isFailure) -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = p.accent) }
+            r == null || (working && r.isFailure) -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { LoadingStatus("Working it out", detail = "Solving the expression step by step") }
             r.isFailure -> Panel {
                 ListRow((r.exceptionOrNull() as? MathError)?.message ?: "Abacus couldn't read that. Check the brackets and operators, or pick what to do above.", icon = WonderIcons.Info, tint = Color(0xFFE39A12))
             }
