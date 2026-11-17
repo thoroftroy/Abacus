@@ -226,14 +226,14 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { setDegrees(!degrees) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                TextButton(onClick = { setDegrees(!degrees) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
                     Text(if (degrees) "DEG" else "RAD", color = lcd.second.copy(alpha = .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
-                TextButton(onClick = { setShowFractions(!showFractions) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                TextButton(onClick = { setShowFractions(!showFractions) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
                     Text(if (showFractions) "1/3" else "0.33", color = lcd.second.copy(alpha = if (showFractions) .9f else .6f), style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { sci = !sci; context.prefs("abacus").edit().putBoolean("sci", sci).apply() }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                TextButton(onClick = { sci = !sci; context.prefs("abacus").edit().putBoolean("sci", sci).apply() }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
                     Text(if (sci) "Basic" else "Scientific", color = p.accent, style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -245,13 +245,16 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
                 style = MaterialTheme.typography.headlineSmall.copy(fontSize = if (result != null) 22.sp else 30.sp, fontFamily = FontFamily.SansSerif)
             )
             val big = result ?: preview
+            // One line that shrinks to fit: fraction results are long, and two lines
+            // at display line heights overflow the fixed box and get clipped.
+            val fs = autoSize(big ?: "", result != null)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (result != null) IconButton(onClick = { context.copyText("Result", result!!); toast("Copied $result") }) { Icon(WonderIcons.ContentCopy, "Copy result", tint = lcd.second.copy(alpha = .6f)) }
                 Text(
                     when { error != null -> error!!; big != null -> "= $big"; else -> "" },
                     Modifier.weight(1f), color = if (error != null) p.danger else lcd.second.copy(alpha = if (result != null) 1f else .5f), textAlign = TextAlign.End,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    style = if (error != null) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.displaySmall.copy(fontSize = autoSize(big ?: "", result != null), fontWeight = if (result != null) FontWeight.Medium else FontWeight.Normal)
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    style = if (error != null) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.displaySmall.copy(fontSize = fs, lineHeight = fs * 1.25f, fontWeight = if (result != null) FontWeight.Medium else FontWeight.Normal)
                 )
             }
         }
@@ -278,7 +281,14 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
     }
 }
 
-private fun autoSize(s: String, final: Boolean) = when { s.length > 16 -> 24.sp; s.length > 11 -> 30.sp; final -> 42.sp; else -> 34.sp }
+private fun autoSize(s: String, final: Boolean) = when {
+    s.length > 28 -> 15.sp
+    s.length > 22 -> 17.sp
+    s.length > 16 -> 20.sp
+    s.length > 11 -> 24.sp
+    final -> 32.sp
+    else -> 28.sp
+}
 
 /** Display form of the raw input: nicer operator glyphs. */
 private fun pretty(s: String) = s.replace("*", "×").replace("/", "÷").replace("-", "−").replace("asin(", "sin⁻¹(").replace("acos(", "cos⁻¹(").replace("atan(", "tan⁻¹(")

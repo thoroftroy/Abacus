@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.11
+
+- The result now stays on one line and shrinks to fit, so long fractions fit inside the display instead of getting clipped. Header buttons are slimmer to give the number room
+
 ## v0.5.10
 
 - New fraction toggle (1/3) in the display: switch results between exact fractions (“1/3 ≈ 0.333”) and decimals only, also in Settings
@@ -7,7 +11,7 @@
 ## v0.5.9
 
 - Calculator now shows fractions: results like 1/3 display as “1/3 ≈ 0.333333333333” instead of decimal only
-- Fixed the RAD/DEG (and Basic/Scientific) toggle not responding — now a proper button with a full touch target
+- Fixed the RAD/DEG (and Basic/Scientific) toggle not responding. Now it is a proper button with a full touch target
 
 ## v0.5.8
 
