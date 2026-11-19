@@ -72,6 +72,7 @@ object Plot {
     fun parse(line: String, params: Map<String, Double>, degrees: Boolean): Shape {
         val s = cleaned(line).trim()
         if (s.isEmpty()) return Shape.Empty
+        if (Piecewise.isPiecewise(s)) return runCatching { Shape.FnX(Piecewise.function(Piecewise.parse(s, degrees))) as Shape }.getOrElse { Shape.Fail((it as? MathError)?.message ?: "Can't read this function yet") }
         return runCatching {
             val rel = splitRelation(s)
             if (rel == null) {

@@ -38,9 +38,14 @@ object Smart {
             .replace('“', ' ').replace('”', ' ').replace('’', '\'').replace("≠", "!=").replace("≈", "=").replace("：", ":")
         VULGAR.forEach { (k, v) -> s = s.replace(k, v) }
         // LaTeX
+        s = unwrapLatex(s)
         s = s.replace("$", "").replace("\\left", "").replace("\\right", "").replace("\\,", " ").replace("\\!", "").replace("\\ ", " ")
         repeat(4) { s = s.replace(Regex("\\\\[dt]?frac\\s*\\{([^{}]*)\\}\\s*\\{([^{}]*)\\}"), "(($1)/($2))") }
         repeat(3) { s = s.replace(Regex("\\\\sqrt\\s*\\[([^\\]]*)\\]\\s*\\{([^{}]*)\\}"), "root($2,$1)").replace(Regex("\\\\sqrt\\s*\\{([^{}]*)\\}"), "sqrt($1)") }
+        s = s.replace(Regex("\\\\(leqslant|leq|le)(?![a-zA-Z])"), "<=").replace(Regex("\\\\(geqslant|geq|ge)(?![a-zA-Z])"), ">=").replace(Regex("\\\\(neq|ne)(?![a-zA-Z])"), "!=")
+            .replace(Regex("\\\\lt(?![a-zA-Z])"), "<").replace(Regex("\\\\gt(?![a-zA-Z])"), ">")
+            .replace("\\lfloor", " floor(").replace("\\rfloor", ")").replace("\\lceil", " ceil(").replace("\\rceil", ")")
+            .replace("⌊", " floor(").replace("⌋", ")").replace("⌈", " ceil(").replace("⌉", ")").replace("≤", "<=").replace("≥", ">=")
         s = s.replace("\\cdot", "*").replace("\\times", "*").replace("\\div", "/").replace("\\pi", "π").replace("\\theta", "t")
             .replace(Regex("\\\\(sin|cos|tan|ln|log|exp|arcsin|arccos|arctan|sinh|cosh|tanh)")) { m -> m.groupValues[1].replace("arc", "a") }
             .replace("\\infty", "1e300").replace("{", "(").replace("}", ")").replace("\\", "")
@@ -60,6 +65,33 @@ object Smart {
         s = s.replace(Regex("\\s*=\\s*\\?\\s*$"), "").replace(Regex("\\s*=\\s*$"), "").replace(Regex("[?!.]+$"), "")
         // f(x) = … and g(t) = … become y = …
         s = s.replace(Regex("^[a-z]\\s*\\(\\s*([a-z])\\s*\\)\\s*="), "y =")
+        return s.trim()
+    }
+
+    /** `\[ \boxed{ … } \]`, `\text{…}` and `\begin{cases}…\end{cases}` reduced to plain text Abacus reads. */
+    private fun unwrapLatex(input: String): String {
+        var s = input.replace("\\[", " ").replace("\\]", " ").replace("\\(", " ").replace("\\)", " ").replace("\\displaystyle", "").replace("\\quad", " ").replace("\\qquad", " ")
+        fun unwrap(cmd: String) {
+            while (true) {
+                val at = s.indexOf(cmd)
+                if (at < 0) return
+                var i = at + cmd.length
+                while (i < s.length && s[i] == ' ') i++
+                if (i >= s.length || s[i] != '{') { s = s.removeRange(at, at + cmd.length); continue }
+                var depth = 0; var j = i
+                while (j < s.length) { if (s[j] == '{') depth++ else if (s[j] == '}') { depth--; if (depth == 0) break }; j++ }
+                s = s.substring(0, at) + " " + s.substring(i + 1, minOf(j, s.length)) + " " + (if (j + 1 <= s.length) s.substring(minOf(j + 1, s.length)) else "")
+            }
+        }
+        listOf("\\boxed", "\\text", "\\mathrm", "\\textbf", "\\mathbf", "\\operatorname").forEach { unwrap(it) }
+        // Cases become one line: pw[formula ? condition ; formula ? condition]
+        s = Regex("\\\\begin\\{(?:cases|dcases|array)\\}(?:\\{[^}]*\\})?(.*?)\\\\end\\{(?:cases|dcases|array)\\}", RegexOption.DOT_MATCHES_ALL).replace(s) { m ->
+            val rows = m.groupValues[1].split(Regex("\\\\\\\\(?:\\[[^\\]]*\\])?")).map { it.trim() }.filter { it.isNotEmpty() }
+            "pw[" + rows.joinToString(" ; ") { r ->
+                val cells = r.split('&').map { it.trim() }
+                cells[0] + " ? " + (cells.getOrNull(1) ?: "").replace(Regex("^(if|for|when)\\s+"), "")
+            } + "]"
+        }
         return s.trim()
     }
 
@@ -96,6 +128,7 @@ object Smart {
     fun run(raw: String, forced: Task, degrees: Boolean): SmartResult {
         val (task0, text) = interpret(raw, forced)
         if (text.isBlank()) throw MathError("Type a calculation, an equation or a function")
+        if (Piecewise.isPiecewise(text)) return Piecewise.run(text, degrees)
         val eqs = equations(text)
         if (eqs.size > 1) return system(eqs, degrees)
         var range: Pair<String, String>? = null

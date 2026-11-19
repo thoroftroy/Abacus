@@ -1,5 +1,11 @@
 # Abacus changelog
 
+## v0.5.18
+
+- Paste LaTeX straight from a chat or paper: `\[ \boxed{ … } \]`, `\begin{cases} … \end{cases}`, `\le`, `\ge`, `\lfloor … \rfloor`, `\lceil … \rceil` and `\text{…}` are all understood
+- Piecewise functions: a function with different formulas on different ranges (including chained conditions like 0.25 ≤ x ≤ 1 and "otherwise") is shown piece by piece with sample values and where it jumps, and opens in Graph
+- Pasting into Calculate sends anything that is not plain arithmetic to Solve, so a pasted function is never squeezed onto the keypad
+
 ## v0.5.17
 
 - Settings are grouped under clear headings: calculator, keypad and display, history
