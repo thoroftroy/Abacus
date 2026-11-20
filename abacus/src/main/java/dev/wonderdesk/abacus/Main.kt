@@ -247,8 +247,11 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             WonderLook.SUPER -> listOf(Color(0xFF160C2E), Color(0xFF0B0619)) to Color(0xFF7DF9FF)
         }
         val shape = RoundedCornerShape(p.panelRadius + 2.dp)
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(0.9f)) {
+        // What is left for the answer once the DEG row, the typed line and the padding are taken out of the box.
+        val roomForAnswer = ((maxHeight.value - 104f) / 1.4f).coerceAtLeast(14f)
         Column(
-            Modifier.fillMaxWidth().weight(0.9f).clip(shape).background(Brush.verticalGradient(lcd.first)).border(1.dp, p.panelBorder, shape).padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxSize().clip(shape).background(Brush.verticalGradient(lcd.first)).border(1.dp, p.panelBorder, shape).padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -273,16 +276,17 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             val big = result ?: preview
             // One line that shrinks to fit: fraction results are long, and two lines
             // at display line heights overflow the fixed box and get clipped.
-            val fs = autoSize(big ?: "", result != null) * (context.prefs("abacus").getInt("lcdScale", 100) / 100f)
+            val fs = minOf(autoSize(big ?: "", result != null).value * (context.prefs("abacus").getInt("lcdScale", 100) / 100f), roomForAnswer).sp
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (result != null) IconButton(onClick = { context.copyText("Result", result!!); toast("Copied $result") }) { Icon(WonderIcons.ContentCopy, "Copy result", tint = lcd.second.copy(alpha = .6f)) }
                 Text(
                     when { error != null -> error!!; big != null -> "= $big"; else -> "" },
                     Modifier.weight(1f), color = if (error != null) p.danger else lcd.second.copy(alpha = if (result != null) 1f else .5f), textAlign = TextAlign.End,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    style = if (error != null) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.displaySmall.copy(fontSize = fs, lineHeight = fs * 1.25f, fontWeight = if (result != null) FontWeight.Medium else FontWeight.Normal)
+                    style = if (error != null) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.displaySmall.copy(fontSize = fs, lineHeight = fs * 1.3f, fontWeight = if (result != null) FontWeight.Medium else FontWeight.Normal)
                 )
             }
+        }
         }
         // ---- keypad ----
         val sciRows = listOf(

@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.19
+
+- Fixed the answer being cut off at the bottom: the answer now shrinks to fit its box and has room below it
+
 ## v0.5.18
 
 - Paste LaTeX straight from a chat or paper: `\[ \boxed{ … } \]`, `\begin{cases} … \end{cases}`, `\le`, `\ge`, `\lfloor … \rfloor`, `\lceil … \rceil` and `\text{…}` are all understood
