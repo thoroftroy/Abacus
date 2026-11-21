@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.5.20
+
+- Fixed a gap above the keyboard in screens with a bottom tab bar: the tab bar now steps aside while you type, so you can see what you are writing
+
 ## v0.5.19
 
 - Fixed the answer being cut off at the bottom: the answer now shrinks to fit its box and has room below it
