@@ -1,5 +1,11 @@
 # Abacus changelog
 
+## v0.6.0
+
+- The digits of each answer shoot up through the background when you press equals
+- A mistake turns the background a soft red until it is fixed, and a negative answer goes icy blue
+- Solve and Graph have their own drifting symbols, and Solve quickens while it works
+
 ## v0.5.25
 
 - The symbols drifting in the background are smaller and fainter so they no longer crowd text; selected segments and chips are readable in every look (including Super); the warning banner at the top has a solid backing so its text is easy to read

@@ -197,9 +197,17 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
             val r = fmt(v)
             addHistory(input, r)
             result = displayFor(v); error = null
+            // The answer's own digits shoot up through the scene.
+            WonderMood.celebrate((r.filter { it.isDigit() }.toSet().map { it.toString() }.take(4) + listOf("=", "✦")))
         } catch (e: MathError) { error = e.message; result = null
         } catch (e: Exception) { error = "That doesn't look like a complete calculation"; result = null }
     }
+    // A mistake turns the scene a soft red until it is fixed; a negative answer goes icy blue, below zero.
+    SceneMoodEffect(when {
+        error != null -> SceneMood(hue = 0f, tint = android.graphics.Color.argb(80, 220, 60, 60), energy = .6f, glyphs = listOf("?", "!", "•"))
+        result?.startsWith("-") == true || result?.startsWith("−") == true -> SceneMood(hue = 205f, tint = android.graphics.Color.argb(60, 170, 210, 255), energy = .7f, glyphs = listOf("−", "❄", "•", "*"))
+        else -> SceneMood()
+    })
     fun press(k: Key) {
         when (k.kind) {
             KeyKind.Clear -> if (k.label == "AC") { setInput(""); result = null; error = null } else { setInput(input.dropLast(if (input.endsWith("(") && input.length >= 2 && input[input.length - 2].isLetter()) input.takeLastWhile { it.isLetter() || it == '(' }.length else 1)); result = null; error = null }
@@ -403,6 +411,8 @@ private fun SmartTab(input: String, setInput: (String) -> Unit, degrees: Boolean
         result = withContext(Dispatchers.Default) { runCatching { Smart.run(input, task, degrees) } }
         working = false
     }
+    // Solving: unknowns drift by, and quicken while it thinks.
+    SceneMoodEffect(if (working) SceneMood(energy = 1.8f, glyphs = listOf("x", "y", "?", "=")) else SceneMood(glyphs = listOf("x", "y", "=", "√", "π")))
     Page {
         Panel {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -505,6 +515,7 @@ private val PLOT_COLORS = listOf(Color(0xFF1E7FE8), Color(0xFFE5483C), Color(0xF
 
 @Composable
 private fun GraphTab(prefs: android.content.SharedPreferences, degrees: Boolean, seed: List<String>?, consumeSeed: () -> Unit) {
+    SceneMoodEffect(SceneMood(glyphs = listOf("∿", "x", "y", "↗", "•")))
     val p = wonderPalette()
     // Any number of lines: functions, polar, parametric, points, equations, inequalities, slider values.
     val fns = remember {
