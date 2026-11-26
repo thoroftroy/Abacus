@@ -46,12 +46,12 @@ private fun sceneLuma(b: android.graphics.Bitmap): Float {
 }
 
 /** Small symbols that drift through an app's scene, so every app's scene is about its own subject (maths signs for Abacus, notes for Echo, arrows for Wayfinder). */
-private class AppMotif(private val w: Int, private val h: Int, private var glyphs: List<String>) {
+private class AppMotif(private val w: Int, private val h: Int, private var glyphs: List<String>, count: Int = 14) {
     private class G(var x: Float, var y: Float, var s: String, val size: Float, val speed: Float, val sway: Float, val phase: Float, val alpha: Int) { var old: String? = null }
     /** A symbol shot up through the scene by a celebration; it rises fast and fades out. */
-    private class Spark(var x: Float, var y: Float, val s: String, val size: Float, val vy: Float, val vx: Float, var life: Float, val spin: Float)
+    private class Spark(var x: Float, var y: Float, val s: String, val size: Float, val vy: Float, val vx: Float, var life: Float, val spin: Float) { var age = 0f }
     private val rnd = java.util.Random(5)
-    private val items = List(14) { make(true) }
+    private val items = List(count) { make(true) }
     private val sparks = ArrayList<Spark>()
     private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD); textAlign = android.graphics.Paint.Align.CENTER }
     private var t = 0f
@@ -68,11 +68,12 @@ private class AppMotif(private val w: Int, private val h: Int, private var glyph
     }
     fun burst(with: List<String>) {
         if (with.isEmpty()) return
-        repeat(22) {
-            sparks += Spark(w * (.08f + rnd.nextFloat() * .84f), h + rnd.nextFloat() * h * .15f, with[rnd.nextInt(with.size)], h * (.03f + rnd.nextFloat() * .035f),
-                h * (.45f + rnd.nextFloat() * .55f), w * (rnd.nextFloat() - .5f) * .25f, 1.6f + rnd.nextFloat() * 1.4f, (rnd.nextFloat() - .5f) * 90f)
+        // A gentle lift of a dozen symbols that fade in, rise and fade away: a celebration, not a spray.
+        repeat(12) {
+            sparks += Spark(w * (.12f + rnd.nextFloat() * .76f), h * (.55f + rnd.nextFloat() * .4f), with[rnd.nextInt(with.size)], h * (.028f + rnd.nextFloat() * .026f),
+                h * (.16f + rnd.nextFloat() * .2f), w * (rnd.nextFloat() - .5f) * .06f, 2.4f + rnd.nextFloat() * 1.2f, (rnd.nextFloat() - .5f) * 30f)
         }
-        if (sparks.size > 90) repeat(sparks.size - 90) { sparks.removeAt(0) }
+        if (sparks.size > 36) repeat(sparks.size - 36) { sparks.removeAt(0) }
     }
     fun busy() = sparks.isNotEmpty() || swap < 1f
     fun step(dt: Float) {
@@ -80,7 +81,7 @@ private class AppMotif(private val w: Int, private val h: Int, private var glyph
         if (swap < 1f) swap = (swap + dt / .9f).coerceAtMost(1f)
         for (g in items) { g.y -= g.speed * dt; if (g.y < -g.size) { val n = make(false); g.x = n.x; g.y = n.y; g.s = n.s; g.old = null } }
         val it = sparks.iterator()
-        while (it.hasNext()) { val p = it.next(); p.y -= p.vy * dt; p.x += p.vx * dt; p.life -= dt; if (p.life <= 0f || p.y < -p.size) it.remove() }
+        while (it.hasNext()) { val p = it.next(); p.y -= p.vy * dt; p.x += p.vx * dt; p.life -= dt; p.age += dt; if (p.life <= 0f || p.y < -p.size) it.remove() }
     }
     fun draw(c: android.graphics.Canvas, color: Int) {
         paint.color = color
@@ -92,8 +93,8 @@ private class AppMotif(private val w: Int, private val h: Int, private var glyph
             if (g.s.isNotEmpty()) { paint.alpha = (g.alpha * (if (o != null) swap else 1f)).toInt(); c.drawText(g.s, x, g.y, paint) }
         }
         for (p in sparks) {
-            paint.textSize = p.size; paint.alpha = (200 * (p.life / 1.2f).coerceIn(0f, 1f)).toInt()
-            c.save(); c.rotate(p.spin * (3f - p.life), p.x, p.y); c.drawText(p.s, p.x, p.y, paint); c.restore()
+            paint.textSize = p.size; paint.alpha = (170 * (p.age / .5f).coerceIn(0f, 1f) * (p.life / 1.2f).coerceIn(0f, 1f)).toInt()
+            c.save(); c.rotate(p.spin * p.age, p.x, p.y); c.drawText(p.s, p.x, p.y, paint); c.restore()
         }
     }
 }
@@ -198,7 +199,10 @@ fun WonderSceneBackdrop(look: WonderLook, motion: WonderMotion, appName: String)
         val k = (minOf(1f, 1280f / ph) * .5f).coerceAtLeast(.2f)
         val w = (pw * k).toInt().coerceAtLeast(120); val h = (ph * k).toInt().coerceAtLeast(120)
         val runner = remember(w, h, cfg) { KitSceneRunner(w, h) }
-        val motif = remember(w, h, appName) { AppMotif(w, h, motifFor(appName)) }
+        val themeName = remember(appName) { AppThemeLayer.themeFor(appName) }
+        val theme = remember(w, h, themeName) { themeName?.let { AppThemeLayer(w, h, it) } }
+        // Fewer drifting symbols when the app has its own picture, so the two don't crowd each other.
+        val motif = remember(w, h, appName) { AppMotif(w, h, motifFor(appName), if (themeName != null) 7 else 14) }
         // The app's mood, eased in: colour turns the short way round, tint, speed, breathing and greyness glide to their new values.
         val mood = WonderMood.mood.value
         val appShift = WonderScenery.hue(appName).toFloat()
@@ -213,15 +217,26 @@ fun WonderSceneBackdrop(look: WonderLook, motion: WonderMotion, appName: String)
         val moodGlyphs = mood.glyphs
         LaunchedEffect(motif, moodGlyphs) { motif.setGlyphs(moodGlyphs ?: motifFor(appName)) }
         val burst = WonderMood.burst.value
-        LaunchedEffect(motif, burst) { burst?.let { motif.burst(it.second) } }
+        // Only a celebration that happens while this scene is up: one left over from earlier must not go off again when the app is opened,
+        // turned or come back to (that was the burst of symbols on opening an app).
+        val seenBurst = remember(motif) { WonderMood.burst.value?.first }
+        LaunchedEffect(motif, burst) { burst?.takeIf { it.first != seenBurst }?.let { motif.burst(it.second) } }
         var breath by remember { mutableFloatStateOf(0f) }
+        // The app's picture takes the app's colour (or the mood's), lighter in Super and earthier in Bliss.
+        val themeHue = naturalHue(cfg.base) + shift.value
+        val themeColor = when (look) {
+            WonderLook.SUPER -> android.graphics.Color.HSVToColor(floatArrayOf(((themeHue % 360f) + 360f) % 360f, .3f, 1f))
+            WonderLook.BLISS -> android.graphics.Color.HSVToColor(floatArrayOf(((themeHue % 360f) + 360f) % 360f, .45f, .55f))
+            else -> android.graphics.Color.HSVToColor(floatArrayOf(((themeHue % 360f) + 360f) % 360f, .6f, .78f))
+        }
+        val themeAlpha = when (look) { WonderLook.SUPER -> .42f; WonderLook.BLISS -> .4f; else -> .42f }
         val motifColor = when (look) { WonderLook.SUPER -> android.graphics.Color.rgb(255, 225, 255); WonderLook.BLISS -> android.graphics.Color.rgb(70, 78, 45); else -> android.graphics.Color.rgb(25, 80, 125) }
         var tick by remember(runner) { mutableLongStateOf(0L) }
         var luma by remember(runner) { mutableFloatStateOf(.6f) }
         // One still frame always; moving only when motion is full and the app is in front.
-        LaunchedEffect(runner) { runner.update(.2f, cfg, 100, false); motif.step(.1f); luma = daylight(runner.hour()); tick++ }
+        LaunchedEffect(runner) { runner.update(.2f, cfg, 100, false); motif.step(.1f); theme?.step(.1f); luma = daylight(runner.hour()); tick++ }
         // With motion reduced the scene is a still picture; it is redrawn when the mood changes so it still follows the app.
-        LaunchedEffect(runner, drawCfg, tint, hush, moodGlyphs) { if (motion != WonderMotion.FULL || !resumed) { motif.step(1f); tick++ } }
+        LaunchedEffect(runner, drawCfg, tint, hush, moodGlyphs) { if (motion != WonderMotion.FULL || !resumed) { motif.step(1f); theme?.step(1f); tick++ } }
         LaunchedEffect(runner, resumed, motion) {
             if (!resumed || motion != WonderMotion.FULL) return@LaunchedEffect
             var last = 0L; var n = 0
@@ -230,7 +245,7 @@ fun WonderSceneBackdrop(look: WonderLook, motion: WonderMotion, appName: String)
                     if (last == 0L) last = now
                     if (now - last >= 33_000_000L) {
                         val dt = ((now - last) / 1e9f).coerceIn(.01f, .2f); last = now
-                        runner.update(dt * energy, cfg, 100, false); motif.step(dt * energy.coerceAtLeast(.25f))
+                        runner.update(dt * energy, cfg, 100, false); motif.step(dt * energy.coerceAtLeast(.25f)); theme?.step(dt * energy.coerceAtLeast(.25f))
                         breath += dt * (1.1f + 4.5f * pulse)
                         if (n++ % 60 == 0) luma = daylight(runner.hour())
                         tick = now
@@ -259,6 +274,11 @@ fun WonderSceneBackdrop(look: WonderLook, motion: WonderMotion, appName: String)
             if (hush > .01f) {
                 drawRect(Color.Gray.copy(alpha = hush), blendMode = androidx.compose.ui.graphics.BlendMode.Saturation)
                 drawRect(Color.Black.copy(alpha = .12f * hush))
+            }
+            // The app's own picture goes over the wash, like a watermark: clear enough to see at any hour, too faint to get in the way of text.
+            if (theme != null) drawIntoCanvas { c ->
+                val nc = c.nativeCanvas
+                nc.save(); nc.scale(size.width / w, size.height / h); theme.draw(nc, themeColor, themeAlpha); nc.restore()
             }
             // Fine noise (dithering): breaks up the banding that shows as lines in big smooth gradients.
             drawRect(ShaderBrush(ImageShader(noise, TileMode.Repeated, TileMode.Repeated)))
