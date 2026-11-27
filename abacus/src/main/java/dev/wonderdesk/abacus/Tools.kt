@@ -20,16 +20,28 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-/** Everyday calculators beyond the keypad: number bases, dates, tips and splits, discounts and loans. */
+/** Measuring tools (level, rulers, compass and the phone's other sensors) and everyday calculators (number bases, dates, tips and splits, discounts and loans). */
 @Composable
 fun ToolsTab() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("measure", android.content.Context.MODE_PRIVATE) }
+    var group by rememberSaveable { mutableIntStateOf(prefs.getInt("toolGroup", 0)) }
+    var measure by rememberSaveable { mutableIntStateOf(prefs.getInt("measureTool", 0)) }
     var tool by rememberSaveable { mutableIntStateOf(0) }
     val names = listOf("Programmer", "Dates", "Tip & split", "Discount", "Loan")
     val scroll = rememberScrollState()
     ScrollToTopOnReselect(scroll)
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { names.forEachIndexed { i, n -> Chip(n, tool == i, { tool = i }) } }
-        when (tool) { 0 -> Programmer(); 1 -> Dates(); 2 -> TipSplit(); 3 -> Discount(); else -> Loan() }
+        Segmented(listOf("Measure", "Calculate"), group, Modifier.fillMaxWidth()) { group = it; prefs.edit().putInt("toolGroup", it).apply() }
+        if (group == 0) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MEASURE_TOOLS.forEachIndexed { i, n -> Chip(n, measure == i, { measure = i; prefs.edit().putInt("measureTool", i).apply() }) }
+            }
+            key(measure) { MeasureTool(measure) }
+        } else {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { names.forEachIndexed { i, n -> Chip(n, tool == i, { tool = i }) } }
+            when (tool) { 0 -> Programmer(); 1 -> Dates(); 2 -> TipSplit(); 3 -> Discount(); else -> Loan() }
+        }
     }
 }
 

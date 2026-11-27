@@ -1,5 +1,17 @@
 # Abacus changelog
 
+## v0.7.0
+
+- The background bubbles follow your answer as you type: none for 0, a few big bubbles for a small number, a fizz of small ones for a big one. A negative answer's bubbles sink, and a mistake pops them all. Each key you press slides a bead along the abacus
+- In the spirit level the background leans with the phone: the beads roll to the low end and the bubbles run uphill like the real bubble. The sound meter makes the bubbles fizz with the noise in the room
+- The background answers your finger: a tap sends rings out and pops what it lands on, and dragging or scrolling leaves a wake and stirs the scene. Saving, adding, deleting and finishing things send a wave of colour through it, and an error gives a red shudder
+- New Measure tools in the Tools tab: a spirit level (flat surface, edge and slope with grade and roof pitch, with Set as zero), an on-screen ruler in centimetres or inches you can check with a bank card, a camera ruler that measures how far away something is and how tall it is, a compass, a thermometer (air temperature and humidity where the phone has the sensors, otherwise the phone's own temperature and heat level), a sound meter, a light meter, a motion meter (gyroscope turning speed and g-force with live graphs), an altimeter that counts the height and floors you climb, and a magnet finder for screws and wires behind walls
+- The calculators (Programmer, Dates, Tip & split, Discount, Loan) are under Calculate in the same tab
+- The animated background now has a picture of its own behind everything: beads that now and then slide along abacus rods, as if someone were counting. It is faint, so text stays easy to read
+- Aqua changes far more through the day: a rose dawn, gold sunrise, turquoise morning, deep azure noon, warm afternoon, orange sunset, violet dusk and a real dark night with the moon shimmering through the water and glowing plankton. Now and then a cloud passes over and the light dims
+- Super's space changes with the time of day too: a dark night with brighter stars, a rose dawn, teal morning, cobalt noon and a red and amber sunset
+- Opening the app no longer sprays a burst of fast symbols across the background; celebrations are a gentle lift of a few symbols, and only for something you just did
+
 ## v0.6.0
 
 - The digits of each answer shoot up through the background when you press equals

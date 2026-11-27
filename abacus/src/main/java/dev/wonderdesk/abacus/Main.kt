@@ -202,6 +202,16 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
         } catch (e: MathError) { error = e.message; result = null
         } catch (e: Exception) { error = "That doesn't look like a complete calculation"; result = null }
     }
+    // Bubbles for the answer, live as you type: none for 0, a few big ones for a small number, a fizz of small ones for a big one;
+    // a negative answer's bubbles sink, and a mistake pops them all.
+    val liveValue = remember(input, degrees, env) { if (input.isBlank()) null else runCatching { Evaluator(degrees, env).eval(MathParser.expression(input)) }.getOrNull()?.takeIf { it.isFinite() } }
+    SceneFeedScope()
+    LaunchedEffect(liveValue, error) {
+        SceneFeed.state = if (error != null) "error" else ""
+        val v = liveValue
+        SceneFeed.count = if (v == null) -1 else answerBubbles(v)
+        SceneFeed.sign = if (v != null && v < 0) -1 else 1
+    }
     // A mistake turns the scene a soft red until it is fixed; a negative answer goes icy blue, below zero.
     SceneMoodEffect(when {
         error != null -> SceneMood(hue = 0f, tint = android.graphics.Color.argb(80, 220, 60, 60), energy = .6f, glyphs = listOf("?", "!", "•"))
@@ -209,6 +219,7 @@ private fun CalculatorTab(input: String, setInput: (String) -> Unit, degrees: Bo
         else -> SceneMood()
     })
     fun press(k: Key) {
+        SceneFeed.beat()
         when (k.kind) {
             KeyKind.Clear -> if (k.label == "AC") { setInput(""); result = null; error = null } else { setInput(input.dropLast(if (input.endsWith("(") && input.length >= 2 && input[input.length - 2].isLetter()) input.takeLastWhile { it.isLetter() || it == '(' }.length else 1)); result = null; error = null }
             KeyKind.Equals -> evaluate()
@@ -811,4 +822,13 @@ private fun UnitPicker(cat: UnitCategory, index: Int, modifier: Modifier, onPick
             }
         }
     }
+}
+
+/** How many bubbles an answer gets: 0 for zero, then more the bigger the number (about 4 for 1, 20 for 50, 36 for 1,000, 80 at most); a fraction adds a few. */
+internal fun answerBubbles(v: Double): Int {
+    val a = kotlin.math.abs(v)
+    if (a < 1e-12) return 0
+    val whole = kotlin.math.log10(a + 1) * 12
+    val frac = if (a % 1.0 > 1e-9) 4 else 0
+    return (whole + frac).toInt().coerceIn(1, 80)
 }
