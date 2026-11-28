@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.8.1
+
+- More ? buttons: the settings that were not obvious now explain in a line or two what they do and why you might want them
+
 ## v0.8.0
 
 - The ruler is now a real ruler: it fills the whole screen and starts at the very top edge, so you rest one end of the object against the top of the phone. Centimetres and millimetres run down the left, inches in sixteenths down the right, both at once

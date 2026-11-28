@@ -154,7 +154,7 @@ private fun TipSplit() {
             }
         }
         PanelDivider(0.dp)
-        SwitchRow("Round each share up", roundUp, { roundUp = it })
+        SwitchRow("Round each share up", roundUp, { roundUp = it }, help = "Each person pays a whole amount rounded up, so nobody has to deal with coins. The total goes up by the small extra.")
     }
     bill.toDoubleOrNull()?.let { b ->
         val tipAmt = b * tip / 100; val total = b + tipAmt

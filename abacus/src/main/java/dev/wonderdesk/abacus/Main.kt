@@ -109,10 +109,10 @@ fun AbacusApp() {
         settings = {
             Panel(title = "Calculator") {
                 SwitchRow("Use degrees for trigonometry", degrees, { degrees = it; prefs.edit().putBoolean("degrees", it).apply() },
-                    subtitle = if (degrees) "sin(90) = 1" else "Radians: sin(π/2) = 1", icon = WonderIcons.Straighten, tint = Color(0xFFE08A1E))
+                    subtitle = if (degrees) "sin(90) = 1" else "Radians: sin(π/2) = 1", icon = WonderIcons.Straighten, tint = Color(0xFFE08A1E), help = "sin, cos and tan work in degrees (a full turn is 360), like at school. Turn it off for radians (a full turn is 2π), which scientists and programmers use.")
                 PanelDivider()
                 SwitchRow("Show fractions", showFractions, { showFractions = it; prefs.edit().putBoolean("fractions", it).apply() },
-                    subtitle = if (showFractions) "Exact: 1/3 ≈ 0.333" else "Decimals only", icon = WonderIcons.Functions, tint = Color(0xFF1E7FE8))
+                    subtitle = if (showFractions) "Exact: 1/3 ≈ 0.333" else "Decimals only", icon = WonderIcons.Functions, tint = Color(0xFF1E7FE8), help = "Answers that are exact fractions are also shown as a fraction, for example 0.75 as 3/4.")
                 PanelDivider()
                 var digits by remember { mutableIntStateOf(prefs.getInt("digits", 12).also { calcDigits = it }) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Digits shown in answers", style = MaterialTheme.typography.labelLarge)
@@ -124,7 +124,7 @@ fun AbacusApp() {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("calc" to "Calculate", "algebra" to "Solve", "graph" to "Graph", "convert" to "Convert", "tools" to "Tools").forEach { (v, n) -> Chip(n, dtab == v, { dtab = v; prefs.edit().putString("tab", v).apply() }) } } }
                 PanelDivider()
                 var awakeA by remember { mutableStateOf(prefs.getBoolean("keepAwake", false)) }
-                SwitchRow("Keep the screen on", awakeA, { awakeA = it; prefs.edit().putBoolean("keepAwake", it).apply() }, icon = WonderIcons.Visibility, tint = Color(0xFF8E44AD))
+                SwitchRow("Keep the screen on", awakeA, { awakeA = it; prefs.edit().putBoolean("keepAwake", it).apply() }, icon = WonderIcons.Visibility, tint = Color(0xFF8E44AD), help = "The screen stays on while Abacus is open, handy for long sums or while measuring.")
                 PanelDivider()
                 var tickK by remember { mutableStateOf(prefs.getBoolean("tickKeys", true)) }
                 SwitchRow("Tick when you press a key", tickK, { tickK = it; prefs.edit().putBoolean("tickKeys", it).apply() }, icon = WonderIcons.VolumeUp, tint = Color(0xFF2E9E44))
