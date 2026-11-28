@@ -34,12 +34,12 @@ fun ToolsTab() {
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Segmented(listOf("Measure", "Calculate"), group, Modifier.fillMaxWidth()) { group = it; prefs.edit().putInt("toolGroup", it).apply() }
         if (group == 0) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MEASURE_TOOLS.forEachIndexed { i, n -> Chip(n, measure == i, { measure = i; prefs.edit().putInt("measureTool", i).apply() }) }
             }
             key(measure) { MeasureTool(measure) }
         } else {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { names.forEachIndexed { i, n -> Chip(n, tool == i, { tool = i }) } }
+            Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp)) { names.forEachIndexed { i, n -> Chip(n, tool == i, { tool = i }) } }
             when (tool) { 0 -> Programmer(); 1 -> Dates(); 2 -> TipSplit(); 3 -> Discount(); else -> Loan() }
         }
     }
@@ -56,6 +56,9 @@ private fun Result(label: String, value: String, big: Boolean = false) {
 }
 
 @Composable
+private fun Hint(text: String) = Text(text, Modifier.fillMaxWidth().padding(horizontal = 6.dp), style = MaterialTheme.typography.bodySmall, color = wonderPalette().secondaryText)
+
+@Composable
 private fun NumField(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) =
     OutlinedTextField(value, { v -> onChange(v.filter { it.isDigit() || it == '.' || it == '-' }) }, modifier, label = { Text(label) }, singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
@@ -69,13 +72,19 @@ private fun Programmer() {
     var text by rememberSaveable { mutableStateOf("255") }
     var base by rememberSaveable { mutableIntStateOf(10) }
     var other by rememberSaveable { mutableStateOf("") }
-    val value = text.trim().removePrefix("0x").removePrefix("0b").toLongOrNull(base)
+    val value = text.trim().let { t -> (if (t.startsWith("-")) "-" else "") + t.removePrefix("-") }.toLongOrNull(base)
     Panel(title = "Number", footer = "Tap a result to copy it.") {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Segmented(listOf("DEC", "HEX", "OCT", "BIN"), listOf(10, 16, 8, 2).indexOf(base)) { i ->
                 val nb = listOf(10, 16, 8, 2)[i]; value?.let { text = it.toString(nb).uppercase() }; base = nb }
-            OutlinedTextField(text, { text = it.uppercase().filter { c -> c.isLetterOrDigit() || c == '-' } }, Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text("Value in base $base") }, isError = value == null && text.isNotBlank(), textStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace))
+            OutlinedTextField(text, { raw ->
+                // A pasted 0x… or 0b… switches to that base; otherwise only the digits this base uses are let in.
+                var t = raw.trim().uppercase()
+                when { t.startsWith("0X") -> { base = 16; t = t.drop(2) }; t.startsWith("0B") && base != 16 -> { base = 2; t = t.drop(2) }; t.startsWith("0O") -> { base = 8; t = t.drop(2) } }
+                val digits = "0123456789ABCDEF".take(base)
+                text = t.filterIndexed { i, c -> c in digits || (c == '-' && i == 0) }
+            }, Modifier.fillMaxWidth(), singleLine = true,
+                label = { Text(when (base) { 16 -> "Hexadecimal value (0-9, A-F)"; 8 -> "Octal value (0-7)"; 2 -> "Binary value (0 and 1)"; else -> "Decimal value" }) }, isError = value == null && text.isNotBlank(), textStyle = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace))
         }
         if (value != null) {
             PanelDivider(0.dp); Result("DEC", value.toString())
@@ -145,7 +154,7 @@ private fun TipSplit() {
                 Text("Tip ${tip.toInt()}%", Modifier.width(80.dp))
                 Slider(tip, { tip = it.toInt().toFloat() }, Modifier.weight(1f), valueRange = 0f..30f, colors = SliderDefaults.colors(thumbColor = p.accent, activeTrackColor = p.accent))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(10, 15, 18, 20, 25).forEach { t -> Chip("$t%", tip.toInt() == t, { tip = t.toFloat() }) } }
+            Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(10, 15, 18, 20, 25).forEach { t -> Chip("$t%", tip.toInt() == t, { tip = t.toFloat() }) } }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Split between", Modifier.weight(1f))
                 IconButton(onClick = { if (people > 1) people-- }) { Icon(WonderIcons.Remove, "Fewer") }
@@ -156,6 +165,7 @@ private fun TipSplit() {
         PanelDivider(0.dp)
         SwitchRow("Round each share up", roundUp, { roundUp = it }, help = "Each person pays a whole amount rounded up, so nobody has to deal with coins. The total goes up by the small extra.")
     }
+    if (bill.toDoubleOrNull() == null) Hint("Type the bill above and the tip, total and each person's share show here.")
     bill.toDoubleOrNull()?.let { b ->
         val tipAmt = b * tip / 100; val total = b + tipAmt
         var each = total / people; if (roundUp) each = kotlin.math.ceil(each)
@@ -183,6 +193,7 @@ private fun Discount() {
         }
     }
     val pr = price.toDoubleOrNull(); val o = off.toDoubleOrNull() ?: 0.0; val t = tax.toDoubleOrNull() ?: 0.0
+    if (pr == null) Hint("Type the price to see the sale price and what you save.")
     if (pr != null) Panel(title = "Result") {
         val sale = pr * (1 - o / 100); val withTax = sale * (1 + t / 100)
         Result("You save", money(pr - sale)); PanelDivider(0.dp)
@@ -205,6 +216,7 @@ private fun Loan() {
         }
     }
     val a = amount.toDoubleOrNull(); val r = (rate.toDoubleOrNull() ?: 0.0) / 100 / 12; val n = ((years.toDoubleOrNull() ?: 0.0) * 12).toInt()
+    if (a == null || n <= 0) Hint("Type how much you borrow, the yearly interest and how many years, and the monthly payment shows here.")
     if (a != null && n > 0) Panel(title = "Repayments") {
         val monthly = if (r == 0.0) a / n else a * r / (1 - Math.pow(1 + r, -n.toDouble()))
         Result("Each month", money(monthly), big = true); PanelDivider(0.dp)

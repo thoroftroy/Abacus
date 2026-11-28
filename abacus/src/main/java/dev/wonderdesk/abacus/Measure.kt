@@ -321,11 +321,25 @@ private fun Ruler() {
 
 /* ------------------------------------------------ camera ruler ------------------------------------------------ */
 
+/** What the back camera sees, while this is on screen. Nothing is recorded. */
+@Composable
+private fun CameraPreview(modifier: Modifier) {
+    val context = LocalContext.current
+    val owner = LocalLifecycleOwner.current
+    AndroidView(factory = { ctx ->
+        val view = PreviewView(ctx); val future = ProcessCameraProvider.getInstance(ctx)
+        future.addListener({
+            val provider = future.get(); val preview = Preview.Builder().build().also { it.setSurfaceProvider(view.surfaceProvider) }
+            runCatching { provider.unbindAll(); provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview) }
+        }, ContextCompat.getMainExecutor(ctx))
+        view
+    }, modifier, onRelease = { runCatching { ProcessCameraProvider.getInstance(context).get().unbindAll() } })
+}
+
 @Composable
 private fun CameraRuler() {
     val p = wonderPalette()
     val context = LocalContext.current
-    val owner = LocalLifecycleOwner.current
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
     val metric = !java.util.Locale.getDefault().country.let { it == "US" || it == "LR" || it == "MM" }
@@ -351,14 +365,7 @@ private fun CameraRuler() {
                     Spacer(Modifier.height(10.dp)); WButton("Allow camera", { ask.launch(Manifest.permission.CAMERA) }, kind = ButtonKind.Primary)
                 }
             } else {
-                AndroidView(factory = { ctx ->
-                    val view = PreviewView(ctx); val future = ProcessCameraProvider.getInstance(ctx)
-                    future.addListener({
-                        val provider = future.get(); val preview = Preview.Builder().build().also { it.setSurfaceProvider(view.surfaceProvider) }
-                        runCatching { provider.unbindAll(); provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview) }
-                    }, ContextCompat.getMainExecutor(ctx))
-                    view
-                }, Modifier.fillMaxSize(), onRelease = { runCatching { ProcessCameraProvider.getInstance(context).get().unbindAll() } })
+                CameraPreview(Modifier.fillMaxSize())
                 // Crosshair
                 Canvas(Modifier.fillMaxSize()) {
                     val c = center; val r = size.minDimension * .07f
@@ -544,6 +551,8 @@ private fun Temperature() {
     val waiting = sensors.isNotEmpty() && readings.isEmpty()
     val history = rememberHistory(main, 90)
     Segmented(listOf("°C", "°F"), if (fahrenheit) 1 else 0, Modifier.fillMaxWidth()) { fahrenheit = it == 1; prefs(context).edit().putBoolean("fahrenheit", fahrenheit).apply() }
+    val infrared = sensors.firstOrNull { heatSensorLabel(it).startsWith("Infrared") }
+    PointThermometer(infrared, infrared?.let { readings[it.name] }, ::t)
     Panel {
         Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // A thermometer drawing whose red column follows the reading (from -10 to 50 °C).
@@ -598,6 +607,50 @@ private fun Temperature() {
     }
 }
 
+/**
+ * Point-and-read, like a kitchen infrared thermometer: the camera shows what you are aiming at and the infrared sensor beside it
+ * reads that spot. A normal camera can't see heat, so without such a sensor this explains that instead of showing a made-up number.
+ */
+@Composable
+private fun PointThermometer(sensor: Sensor?, reading: Float?, t: (Float) -> String) {
+    val p = wonderPalette()
+    val context = LocalContext.current
+    if (sensor == null) {
+        Panel(title = "Point at something") {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("This phone has no infrared heat sensor that apps can use, so it can't read the temperature of things you point it at.", color = p.text)
+                Text("The camera can't do it either: phone cameras filter out heat light, so any app that shows a temperature through the camera is guessing. " +
+                    "A few phones have a real heat sensor next to the camera (Google's Pixel 8 Pro and 9 Pro). On a phone that shares one with apps, this screen shows the camera with a crosshair and reads the spot you aim at.",
+                    style = MaterialTheme.typography.bodySmall, color = p.secondaryText)
+            }
+        }
+        return
+    }
+    var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+    var held by remember { mutableStateOf<Float?>(null) }
+    val shown = held ?: reading
+    Panel(title = "Point at something") {
+        Box(Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(14.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
+            if (granted) CameraPreview(Modifier.fillMaxSize())
+            else WButton("Show the camera to aim", { ask.launch(Manifest.permission.CAMERA) }, kind = ButtonKind.Primary)
+            Canvas(Modifier.fillMaxSize()) {
+                val c = center; val r = size.minDimension * .09f
+                drawCircle(Color.White, r, c, style = Stroke(4f)); drawCircle(Color(0xFFE5483C), 7f, c)
+                for (k in 0 until 4) rotate(k * 90f, c) { drawLine(Color.White, Offset(c.x, c.y - r * 2.2f), Offset(c.x, c.y - r * 1.25f), 4f) }
+            }
+            Text(shown?.let(t) ?: "Aim and wait…", Modifier.align(Alignment.BottomCenter).padding(12.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xAA000000)).padding(horizontal = 14.dp, vertical = 6.dp),
+                color = Color.White, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold))
+            if (held != null) Text("Held", Modifier.align(Alignment.TopEnd).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE5483C)).padding(horizontal = 8.dp, vertical = 3.dp), color = Color.White, style = MaterialTheme.typography.labelLarge)
+        }
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            WButton(if (held == null) "Hold this reading" else "Measure again", { held = if (held == null) reading else null }, Modifier.weight(1f), kind = ButtonKind.Primary, enabled = reading != null || held != null)
+        }
+        Hint("Hold the phone close, a hand's width or so: the sensor reads a spot that grows wider the further away you are. Shiny metal reads colder than it really is.")
+        Spacer(Modifier.height(10.dp))
+    }
+}
+
 /* ------------------------------------------------ sound ------------------------------------------------ */
 
 private fun soundLabel(db: Float) = when {
@@ -613,8 +666,12 @@ private fun SoundMeter() {
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
     var level by remember { mutableStateOf<Float?>(null) }
     var peak by remember { mutableFloatStateOf(0f) }
-    var sum by remember { mutableDoubleStateOf(0.0) }
-    var count by remember { mutableIntStateOf(0) }
+    var average by remember { mutableStateOf<Float?>(null) }
+    var micNote by remember { mutableStateOf<String?>(null) }
+    // Every phone's microphone is a little more or less sensitive than Android's rules say; this nudges the reading to match.
+    var trim by remember { mutableFloatStateOf(prefs(context).getFloat("soundTrim", 0f)) }
+    fun setTrim(v: Float) { trim = v.coerceIn(-30f, 30f); prefs(context).edit().putFloat("soundTrim", trim).apply() }
+    var resetAt by remember { mutableIntStateOf(0) }
     if (!granted) {
         Panel {
             Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -624,26 +681,35 @@ private fun SoundMeter() {
         }
         return
     }
+    val trimNow by rememberUpdatedState(trim)
+    val resetNow by rememberUpdatedState(resetAt)
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val rate = 44100
+            val rate = 48000
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            // The unprocessed input skips the phone's voice tuning, noise cancelling and level control, so it is the honest one to measure with.
+            val unprocessed = am.getProperty(android.media.AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true"
             val size = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(4096)
-            val rec = runCatching { AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size) }.getOrNull()
-                ?.takeIf { it.state == AudioRecord.STATE_INITIALIZED } ?: return@withContext
-            val buf = ShortArray(size / 2)
+            fun open(src: Int) = runCatching { AudioRecord(src, rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size * 2) }.getOrNull()?.takeIf { it.state == AudioRecord.STATE_INITIALIZED }
+            var source = if (unprocessed) MediaRecorder.AudioSource.UNPROCESSED else MediaRecorder.AudioSource.VOICE_RECOGNITION
+            val rec = open(source) ?: run { source = MediaRecorder.AudioSource.VOICE_RECOGNITION; open(source) } ?: return@withContext
+            val offset = if (source == MediaRecorder.AudioSource.UNPROCESSED) SoundLevel.OFFSET_UNPROCESSED else SoundLevel.OFFSET_VOICE
+            withContext(Dispatchers.Main) { micNote = if (source == MediaRecorder.AudioSource.UNPROCESSED) "Raw microphone, no voice tuning" else "Voice microphone (this phone has no raw input)" }
+            val meter = SoundLevel(rate)
+            val buf = ShortArray(rate / 20)
+            var seenReset = resetNow
+            var lastUi = 0L
             try {
                 rec.startRecording()
-                var smooth = 0f
                 while (isActive) {
                     val n = rec.read(buf, 0, buf.size); if (n <= 0) continue
-                    var s = 0.0; for (i in 0 until n) { val v = buf[i] / 32768.0; s += v * v }
-                    // Android requires the voice recognition input to give an RMS of about 2500 (of 32768) for a 94 dB tone,
-                    // so the level in dB below full scale plus about 116 is the sound level in the room.
-                    val db = (20 * log10(sqrt(s / n).coerceAtLeast(1e-6)) + 116.3).toFloat().coerceIn(0f, 130f)
-                    smooth = if (smooth == 0f) db else smooth + (db - smooth) * .3f
+                    if (seenReset != resetNow) { seenReset = resetNow; meter.reset() }
+                    val db = (meter.feed(buf, n) + offset + trimNow).toFloat().coerceIn(0f, 140f)
+                    val avg = meter.average()?.let { (it + offset + trimNow).toFloat().coerceIn(0f, 140f) }
                     // The scene fizzes with the room: louder is more bubbles, rising faster.
-                    SceneFeed.waveOn = true; SceneFeed.push(((smooth - 30f) / 70f).coerceIn(0f, 1f))
-                    withContext(Dispatchers.Main) { level = smooth; if (smooth > peak) peak = smooth; sum += smooth; count++ }
+                    SceneFeed.waveOn = true; SceneFeed.push(((db - 30f) / 70f).coerceIn(0f, 1f))
+                    val now = System.currentTimeMillis()
+                    if (now - lastUi >= 100) { lastUi = now; withContext(Dispatchers.Main) { level = db; average = avg; if (db > peak) peak = db } }
                 }
             } finally { runCatching { rec.stop() }; rec.release(); SceneFeed.waveOn = false; SceneFeed.amp = 0f }
         }
@@ -659,7 +725,7 @@ private fun SoundMeter() {
                     val to = zones.getOrNull(i + 1)?.first ?: 120f
                     drawArc(col, 180f + from / 120f * 180f, (to - from) / 120f * 180f, false, Offset(c.x - r, c.y - r), Size(r * 2, r * 2), style = Stroke(22f))
                 }
-                val a = Math.toRadians((180.0 + db / 120.0 * 180.0))
+                val a = Math.toRadians((180.0 + db.coerceAtMost(120f) / 120.0 * 180.0))
                 drawLine(p.text, c, Offset(c.x + (cos(a) * r * .9f).toFloat(), c.y + (sin(a) * r * .9f).toFloat()), 7f, StrokeCap.Round)
                 drawCircle(p.text, 12f, c)
             }
@@ -670,10 +736,20 @@ private fun SoundMeter() {
     Panel {
         ListRow("Loudest", trailing = { Text(if (peak > 0f) "${peak.roundToInt()} dB" else "-", color = p.text) })
         PanelDivider(16.dp)
-        ListRow("Average", trailing = { Text(if (count > 0) "${(sum / count).roundToInt()} dB" else "-", color = p.text) })
+        ListRow("Average", subtitle = "The steady level with the same total sound energy", trailing = { Text(average?.let { "${it.roundToInt()} dB" } ?: "-", color = p.text) })
     }
-    WButton("Start over", { peak = 0f; sum = 0.0; count = 0 }, Modifier.fillMaxWidth(), kind = ButtonKind.Plain)
-    Hint("Phone microphones are tuned for voices, so treat this as a close guide rather than a certified meter.")
+    WButton("Start over", { peak = 0f; average = null; resetAt++ }, Modifier.fillMaxWidth(), kind = ButtonKind.Plain)
+    Panel(title = "Make it match", footer = "If you have a real sound meter, or know a level (a quiet bedroom at night is about 30 dB, a fridge humming about 40, normal talking a metre away about 60), nudge this until the reading agrees. It is kept for next time.") {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WButton("-5", { setTrim(trim - 5f) }, kind = ButtonKind.Plain)
+            WButton("-1", { setTrim(trim - 1f) }, kind = ButtonKind.Plain)
+            Text(if (trim == 0f) "No change" else "%+.0f dB".format(trim), Modifier.weight(1f), color = p.text, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
+            WButton("+1", { setTrim(trim + 1f) }, kind = ButtonKind.Plain)
+            WButton("+5", { setTrim(trim + 5f) }, kind = ButtonKind.Plain)
+        }
+        if (trim != 0f) { PanelDivider(16.dp); ListRow("Back to no change", onClick = { setTrim(0f) }) }
+    }
+    Hint("Readings are in dB(A), the scale real sound meters and hearing guidelines use. " + (micNote?.let { "$it. " } ?: "") + "Keep your hand and the wind off the microphone at the bottom of the phone.")
 }
 
 /* ------------------------------------------------ light ------------------------------------------------ */

@@ -116,12 +116,12 @@ fun AbacusApp() {
                 PanelDivider()
                 var digits by remember { mutableIntStateOf(prefs.getInt("digits", 12).also { calcDigits = it }) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Digits shown in answers", style = MaterialTheme.typography.labelLarge)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(6, 8, 10, 12, 15).forEach { v -> Chip("$v", digits == v, { digits = v; calcDigits = v; prefs.edit().putInt("digits", v).apply() }) } } }
+                    Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(6, 8, 10, 12, 15).forEach { v -> Chip("$v", digits == v, { digits = v; calcDigits = v; prefs.edit().putInt("digits", v).apply() }) } } }
             }
             Panel(title = "Keypad and display") {
                 var dtab by remember { mutableStateOf(prefs.getString("tab", "calc") ?: "calc") }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Open on", style = MaterialTheme.typography.labelLarge)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("calc" to "Calculate", "algebra" to "Solve", "graph" to "Graph", "convert" to "Convert", "tools" to "Tools").forEach { (v, n) -> Chip(n, dtab == v, { dtab = v; prefs.edit().putString("tab", v).apply() }) } } }
+                    Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("calc" to "Calculate", "algebra" to "Solve", "graph" to "Graph", "convert" to "Convert", "tools" to "Tools").forEach { (v, n) -> Chip(n, dtab == v, { dtab = v; prefs.edit().putString("tab", v).apply() }) } } }
                 PanelDivider()
                 var awakeA by remember { mutableStateOf(prefs.getBoolean("keepAwake", false)) }
                 SwitchRow("Keep the screen on", awakeA, { awakeA = it; prefs.edit().putBoolean("keepAwake", it).apply() }, icon = WonderIcons.Visibility, tint = Color(0xFF8E44AD), help = "The screen stays on while Abacus is open, handy for long sums or while measuring.")
@@ -135,7 +135,7 @@ fun AbacusApp() {
             Panel(title = "History") {
                 var hist by remember { mutableIntStateOf(prefs.getInt("histMax", 100)) }
                 Column(Modifier.padding(16.dp, 10.dp)) { Text("Remember the last calculations", style = MaterialTheme.typography.labelLarge)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(20, 50, 100, 300, 1000).forEach { v -> Chip("$v", hist == v, { hist = v; prefs.edit().putInt("histMax", v).apply() }) } } }
+                    Row(Modifier.scrollRow(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf(20, 50, 100, 300, 1000).forEach { v -> Chip("$v", hist == v, { hist = v; prefs.edit().putInt("histMax", v).apply() }) } } }
                 PanelDivider()
                 ListRow("Clear calculation history", icon = WonderIcons.DeleteSweep, danger = true, onClick = {
                     history = emptyList(); prefs.edit().remove("history").apply()
@@ -430,13 +430,13 @@ private fun SmartTab(input: String, setInput: (String) -> Unit, degrees: Boolean
                 Field(input, setInput, "Type or paste anything", singleLine = false, keyboard = KeyboardType.Ascii, textStyle = MaterialTheme.typography.titleMedium,
                     supporting = "e.g. 2x + 3 = 11 · y = x² − 4 · derivative of x² sin x · 15% of 80",
                     trailing = if (input.isNotEmpty()) ({ IconButton(onClick = { setInput("") }) { Icon(WonderIcons.Close, "Clear") } }) else null)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth().scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("x", "y", "=", "^", "(", ")", "√", "π", "²", ";").forEach { sym ->
                         Box(Modifier.size(width = 40.dp, height = 38.dp).clip(RoundedCornerShape(8.dp)).background(p.window).border(1.dp, p.panelBorder, RoundedCornerShape(8.dp))
                             .clickable { setInput(input + if (sym == ";") "; " else sym) }, contentAlignment = Alignment.Center) { Text(sym, style = MaterialTheme.typography.titleMedium) }
                     }
                 }
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth().scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Task.entries.forEach { t -> Chip(t.label, task == t, { task = t }) }
                 }
             }
@@ -465,7 +465,7 @@ private fun SmartTab(input: String, setInput: (String) -> Unit, degrees: Boolean
                         Switch(showWork, { showWork = it; prefs.edit().putBoolean("showWork", it).apply() })
                     }
                 }
-                if (res.alternatives.isNotEmpty() && task == Task.Auto) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (res.alternatives.isNotEmpty() && task == Task.Auto) Row(Modifier.fillMaxWidth().scrollRow(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Also try", style = MaterialTheme.typography.labelLarge, color = p.secondaryText)
                     res.alternatives.forEach { t -> Chip(t.label, false, { if (t == Task.Graph && res.graphs.isNotEmpty()) onGraph(res.graphs) else task = t }) }
                 }
@@ -758,7 +758,7 @@ private fun ConverterTab(prefs: android.content.SharedPreferences) {
         "Temperature" to WonderIcons.Thermostat, "Speed" to WonderIcons.Speed, "Time" to WonderIcons.Schedule, "Data" to WonderIcons.Storage,
         "Energy" to WonderIcons.Bolt, "Pressure" to WonderIcons.Tune, "Angle" to WonderIcons.RotateRight, "Fuel" to WonderIcons.Thermostat)
     Page {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().scrollRow(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Units.categories.forEachIndexed { i, c -> Chip(c.name, i == catIndex, { catIndex = i; value = if (c.name == "Temperature") "20" else "1" }, icons[c.name]) }
         }
         Panel {

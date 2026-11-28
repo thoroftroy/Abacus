@@ -1,5 +1,12 @@
 # Abacus changelog
 
+## v0.9.0
+
+- The sound meter now measures properly: it uses the A-weighted scale a real sound level meter uses, a steady 1 second average, with the loudest and quietest moments and typical examples next to the number (a quiet room, a conversation, traffic). A note says phone microphones are not calibrated, so treat it as close, not exact
+- Temperature has a Point at something panel: on a phone with a real infrared heat sensor it shows the camera with a crosshair and reads the spot you aim at. Other phones get a plain explanation that phone cameras cannot see heat, instead of a made-up number
+- Rows that scroll sideways (the tools, chips and filters) now fade at the edge where there is more, show a small arrow you can tap, and nudge once when first shown, so it is clear there is more to scroll to
+- Tools tidied: the base converter accepts pasted 0x, 0b and 0o values and only lets in digits that fit, and the tip, discount and loan tools say what to type instead of showing nothing
+
 ## v0.8.1
 
 - More ? buttons: the settings that were not obvious now explain in a line or two what they do and why you might want them
