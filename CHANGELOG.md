@@ -1,5 +1,9 @@
 # Abacus changelog
 
+## v0.7.1
+
+- The moving background holds still while Battery Saver is on, so it uses next to no power then. It still changes with what the app is doing
+
 ## v0.7.0
 
 - The background bubbles follow your answer as you type: none for 0, a few big bubbles for a small number, a fizz of small ones for a big one. A negative answer's bubbles sink, and a mistake pops them all. Each key you press slides a bead along the abacus
