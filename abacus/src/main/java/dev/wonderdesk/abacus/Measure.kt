@@ -299,61 +299,24 @@ private fun Level() {
 private fun Ruler() {
     val p = wonderPalette()
     val context = LocalContext.current
-    val density = LocalDensity.current
-    var inches by rememberSaveable { mutableStateOf(prefs(context).getBoolean("inches", java.util.Locale.getDefault().country in setOf("US", "LR", "MM"))) }
-    var scale by remember { mutableFloatStateOf(prefs(context).getFloat("rulerScale", 1f)) }
-    var calibrating by remember { mutableStateOf(false) }
-    // Real pixels per millimetre from the screen's own size, times a correction the user can set with a bank card.
-    val ydpi = context.resources.displayMetrics.ydpi
-    val pxPerMm = ydpi / 25.4f * scale
-    var markPx by remember { mutableFloatStateOf(pxPerMm * 50f) }
-    val mm = markPx / pxPerMm
-    Segmented(listOf("Centimetres", "Inches"), if (inches) 1 else 0, Modifier.fillMaxWidth()) { inches = it == 1; prefs(context).edit().putBoolean("inches", inches).apply() }
-    BigValue(if (inches) "%.2f in".format(mm / 25.4f) else "%.1f cm".format(mm / 10f), if (inches) "%.1f cm".format(mm / 10f) else "%.2f in".format(mm / 25.4f))
-    val heightDp = with(density) { (pxPerMm * (if (calibrating) 95f else 150f)).toDp() }
-    Box(Modifier.fillMaxWidth().height(heightDp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF3C4))
-        .pointerInput(pxPerMm) { detectTapGestures { markPx = it.y.coerceAtLeast(0f) } }
-        .pointerInput(pxPerMm) { detectDragGestures { ch, _ -> markPx = ch.position.y.coerceAtLeast(0f) } }) {
-        Canvas(Modifier.fillMaxSize()) {
-            val ink = Color(0xFF3A2A10)
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.rgb(58, 42, 16); textSize = 30f; typeface = android.graphics.Typeface.DEFAULT_BOLD }
-            if (!inches) {
-                var i = 0
-                while (i * pxPerMm <= size.height) {
-                    val y = i * pxPerMm; val len = when { i % 10 == 0 -> 70f; i % 5 == 0 -> 46f; else -> 26f }
-                    drawLine(ink, Offset(0f, y), Offset(len, y), if (i % 10 == 0) 3f else 1.6f)
-                    if (i % 10 == 0 && i > 0) drawContext.canvas.nativeCanvas.drawText("${i / 10}", 80f, y + 11f, paint)
-                    i++
-                }
-            } else {
-                val pxPerSixteenth = pxPerMm * 25.4f / 16f; var i = 0
-                while (i * pxPerSixteenth <= size.height) {
-                    val y = i * pxPerSixteenth; val len = when { i % 16 == 0 -> 70f; i % 8 == 0 -> 52f; i % 4 == 0 -> 38f; i % 2 == 0 -> 28f; else -> 18f }
-                    drawLine(ink, Offset(0f, y), Offset(len, y), if (i % 16 == 0) 3f else 1.6f)
-                    if (i % 16 == 0 && i > 0) drawContext.canvas.nativeCanvas.drawText("${i / 16}", 80f, y + 11f, paint)
-                    i++
-                }
+    // Re-read when coming back from the ruler, so the last measurement shows here.
+    val resumed = rememberIsResumed()
+    val last = remember(resumed) { RulerPrefs.last(context) }
+    val inches = remember(resumed) { RulerPrefs.inches(context) }
+    val scale = remember(resumed) { RulerPrefs.scale(context) }
+    Panel {
+        Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Canvas(Modifier.fillMaxWidth().height(70.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFFFF3C4))) {
+                val ink = Color(0xFF3A2A10); val step = size.width / 60f
+                for (i in 0..60) { val len = when { i % 10 == 0 -> .6f; i % 5 == 0 -> .42f; else -> .25f } * size.height; drawLine(ink, Offset(i * step, 0f), Offset(i * step, len), if (i % 10 == 0) 3f else 1.5f) }
             }
-            drawLine(p.accent, Offset(0f, 2f), Offset(size.width, 2f), 4f)
-            drawLine(Color(0xFFE5483C), Offset(0f, markPx), Offset(size.width, markPx), 5f)
-            drawCircle(Color(0xFFE5483C), 16f, Offset(size.width - 40f, markPx))
-            if (calibrating) {
-                // A bank card is exactly 85.60 mm long: the box shows where its edge should land.
-                val cardPx = 85.6f * pxPerMm
-                drawRoundRect(Color(0x332E7FE8), Offset(size.width * .35f, 0f), Size(size.width * .55f, cardPx), CornerRadius(24f))
-                drawRoundRect(Color(0xFF2E7FE8), Offset(size.width * .35f, 0f), Size(size.width * .55f, cardPx), CornerRadius(24f), style = Stroke(4f))
-            }
+            BigValue(if (last > 0f) lengthText(last, inches) else "Ready", if (last > 0f) "Last measurement" else null)
+            WButton("Open the ruler", { context.startActivity(android.content.Intent(context, RulerActivity::class.java)) }, Modifier.fillMaxWidth(), kind = ButtonKind.Primary)
+            Hint("The ruler fills the screen and starts at its very top edge: rest one end of the object against the top of the phone, then drag the red line to the other end. Centimetres down the left, inches down the right.")
+            Text(if (abs(scale - 1f) > .001f) "Scale checked with a card (%+.1f%%)".format((scale - 1f) * 100f) else "For the most exact readings, use Check scale with a bank card once.",
+                style = MaterialTheme.typography.bodySmall, color = p.secondaryText, textAlign = TextAlign.Center)
         }
     }
-    Hint(if (calibrating) "Hold a bank or ID card against the screen with its short edge on the top line, then slide until the blue box matches the card's length."
-        else "Line one end of the object up with the blue line at the top, then tap or drag the red line to its other end.")
-    if (calibrating) {
-        Slider(scale, { scale = it }, valueRange = .85f..1.15f)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            WButton("Done", { calibrating = false; prefs(context).edit().putFloat("rulerScale", scale).apply() }, Modifier.weight(1f), kind = ButtonKind.Primary)
-            WButton("Reset", { scale = 1f }, Modifier.weight(1f), kind = ButtonKind.Plain)
-        }
-    } else WButton("Check with a card", { calibrating = true }, Modifier.fillMaxWidth())
 }
 
 /* ------------------------------------------------ camera ruler ------------------------------------------------ */
@@ -373,6 +336,11 @@ private fun CameraRuler() {
     val g = rememberGravity()
     // The back camera looks along the phone's -Z axis; the angle between that and straight down is how far the camera is raised.
     val fromDown = g?.let { val n = sqrt(it[0] * it[0] + it[1] * it[1] + it[2] * it[2]).coerceAtLeast(.1f); Math.toDegrees(acos((it[2] / n).coerceIn(-1f, 1f).toDouble())).toFloat() }
+    // A mark uses the middle reading of the last 0.6 seconds, so a shaky hand or a tap on the button doesn't throw it off.
+    val recent = remember { java.util.ArrayDeque<Pair<Long, Float>>() }
+    SideEffect { fromDown?.let { v -> val now = System.currentTimeMillis(); recent.addLast(now to v); while (recent.isNotEmpty() && now - recent.first.first > 600) recent.removeFirst() } }
+    fun steady(): Float? = if (recent.isEmpty()) fromDown else recent.map { it.second }.sorted()[recent.size / 2]
+    val shaky = recent.size > 3 && recent.maxOf { it.second } - recent.minOf { it.second } > 1.5f
     fun len(m: Float) = if (metric) (if (m < 10f) "%.2f m".format(m) else "%.1f m".format(m)) else { val inch = m / .0254f; "%d ft %d in".format((inch / 12).toInt(), (inch % 12).roundToInt()) }
 
     Panel {
@@ -405,11 +373,11 @@ private fun CameraRuler() {
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         WButton("Mark the bottom", {
-            val a = fromDown ?: return@WButton
+            val a = steady() ?: return@WButton
             if (a < 88f && eyeM > 0f) { distance = eyeM * tan(Math.toRadians(a.toDouble())).toFloat(); objHeight = null }
         }, Modifier.weight(1f), kind = if (distance == null) ButtonKind.Primary else ButtonKind.Secondary, enabled = granted && fromDown != null)
         WButton("Mark the top", {
-            val a = fromDown ?: return@WButton; val d = distance ?: return@WButton
+            val a = steady() ?: return@WButton; val d = distance ?: return@WButton
             objHeight = (eyeM + d * tan(Math.toRadians((a - 90f).toDouble())).toFloat()).coerceAtLeast(0f)
         }, Modifier.weight(1f), kind = if (distance != null) ButtonKind.Primary else ButtonKind.Secondary, enabled = granted && distance != null)
     }
@@ -418,7 +386,7 @@ private fun CameraRuler() {
         PanelDivider(16.dp)
         ListRow("Its height", trailing = { Text(objHeight?.let { len(it) } ?: if (distance == null) "-" else "Mark the top", style = MaterialTheme.typography.titleMedium, color = if (objHeight != null) p.accent else p.secondaryText) })
         PanelDivider(16.dp)
-        ListRow("Camera angle", trailing = { Text(fromDown?.let { "%.1f° from straight down".format(it) } ?: "-", color = p.secondaryText) })
+        ListRow("Camera angle", subtitle = if (shaky) "Hold the phone steadier for an exact mark" else null, trailing = { Text(fromDown?.let { "%.1f° from straight down".format(it) } ?: "-", color = if (shaky) Color(0xFFD9822B) else p.secondaryText) })
     }
     Panel(title = "Your phone's height", footer = "Measure from the floor to the phone as you hold it (about your eye level less ${if (metric) "10 cm" else "4 in"}). The answers are only as good as this number, and assume the floor is level.") {
         OutlinedTextField(heightText, { v -> heightText = v.filter { it.isDigit() || it == '.' }; prefs(context).edit().putString("eye", heightText).apply(); distance = null; objHeight = null },
@@ -477,17 +445,67 @@ private fun Compass() {
 
 /* ------------------------------------------------ temperature ------------------------------------------------ */
 
+/** Every sensor on this phone that reports a temperature: the standard air sensor plus any maker's own (an infrared thermometer, a skin or case sensor). */
+private fun heatSensors(sm: SensorManager): List<Sensor> = sm.getSensorList(Sensor.TYPE_ALL).filter { s ->
+    val n = (s.name + " " + s.stringType + " " + s.vendor).lowercase()
+    s.type == Sensor.TYPE_AMBIENT_TEMPERATURE || ("temp" in n || "therm" in n) && "compensat" !in n && "uncal" !in n
+}.distinctBy { it.name + it.type }
+
+private fun heatSensorLabel(s: Sensor): String {
+    val n = (s.name + " " + s.stringType).lowercase()
+    return when {
+        s.type == Sensor.TYPE_AMBIENT_TEMPERATURE -> "Air"
+        "ir" in n.split(' ', '_', '.', '-') || "infrared" in n || "object" in n || "mlx" in n -> "Infrared (point it at something)"
+        "skin" in n -> "Phone's skin"
+        else -> s.name
+    }
+}
+
+/** The weather outside, from Open-Meteo (free, no account), for a rough position. Only when you turn it on. */
+private data class Outside(val temp: Float, val feels: Float?, val humidity: Float?, val at: Long)
+
+@android.annotation.SuppressLint("MissingPermission")
+private fun fetchOutside(c: Context): Outside? {
+    val lm = c.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+    val loc = listOf(android.location.LocationManager.FUSED_PROVIDER, android.location.LocationManager.NETWORK_PROVIDER, android.location.LocationManager.GPS_PROVIDER, android.location.LocationManager.PASSIVE_PROVIDER)
+        .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }.maxByOrNull { it.time }
+        ?: run {
+            // No fix yet: ask once for a fresh coarse one (up to 15 seconds).
+            val latch = java.util.concurrent.CountDownLatch(1); var got: android.location.Location? = null
+            runCatching { lm.getCurrentLocation(android.location.LocationManager.NETWORK_PROVIDER, null, c.mainExecutor) { got = it; latch.countDown() } }
+            latch.await(15, java.util.concurrent.TimeUnit.SECONDS); got
+        } ?: return null
+    // Two decimals is about a kilometre: plenty for the weather, and no more exact than it needs to be.
+    val url = java.net.URL("https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m,apparent_temperature,relative_humidity_2m".format(java.util.Locale.US, loc.latitude, loc.longitude))
+    val con = url.openConnection() as java.net.HttpURLConnection
+    con.connectTimeout = 15_000; con.readTimeout = 20_000
+    return try {
+        val cur = org.json.JSONObject(con.inputStream.bufferedReader().readText()).getJSONObject("current")
+        Outside(cur.getDouble("temperature_2m").toFloat(), cur.optDouble("apparent_temperature").takeIf { !it.isNaN() }?.toFloat(),
+            cur.optDouble("relative_humidity_2m").takeIf { !it.isNaN() }?.toFloat(), System.currentTimeMillis())
+    } finally { con.disconnect() }
+}
+
 @Composable
 private fun Temperature() {
     val p = wonderPalette()
     val context = LocalContext.current
     var fahrenheit by rememberSaveable { mutableStateOf(prefs(context).getBoolean("fahrenheit", java.util.Locale.getDefault().country == "US")) }
     fun t(c: Float) = if (fahrenheit) "%.1f °F".format(c * 9f / 5f + 32f) else "%.1f °C".format(c)
-    // Readings outside what air can really be are a sensor glitch (the first one is sometimes junk), so they are left out.
-    val airRaw by rememberSensor(Sensor.TYPE_AMBIENT_TEMPERATURE, SensorManager.SENSOR_DELAY_NORMAL)
+    val sm = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    val sensors = remember { heatSensors(sm) }
+    // Live readings from every heat sensor. Readings outside what is physically sensible are a glitch (the first one is sometimes junk).
+    val readings = remember { mutableStateMapOf<String, Float>() }
+    DisposableEffect(sensors) {
+        val l = object : SensorEventListener {
+            override fun onSensorChanged(e: SensorEvent) { e.values.firstOrNull()?.takeIf { it in -60f..300f }?.let { readings[e.sensor.name] = it } }
+            override fun onAccuracyChanged(sensor: Sensor, a: Int) {}
+        }
+        sensors.forEach { runCatching { sm.registerListener(l, it, SensorManager.SENSOR_DELAY_NORMAL) } }
+        onDispose { sm.unregisterListener(l) }
+    }
     val humidityRaw by rememberSensor(Sensor.TYPE_RELATIVE_HUMIDITY, SensorManager.SENSOR_DELAY_NORMAL)
-    val air = airRaw?.takeIf { it.values[0] in -60f..80f }
-    val humidity = humidityRaw?.takeIf { it.values[0] in 0f..100f }
+    val humidity = humidityRaw?.takeIf { it.values[0] > 0f && it.values[0] <= 100f }
     var battery by remember { mutableStateOf<Float?>(null) }
     var thermal by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -497,11 +515,37 @@ private fun Temperature() {
             delay(2000)
         }
     }
-    val history = rememberHistory(air?.values?.get(0) ?: battery, 90)
+    // Outside air: opt-in, needs a rough location.
+    var outsideOn by remember { mutableStateOf(prefs(context).getBoolean("outsideTemp", false)) }
+    var located by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) }
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { located = it; if (it) { outsideOn = true; prefs(context).edit().putBoolean("outsideTemp", true).apply() } }
+    var outside by remember { mutableStateOf<Outside?>(null) }
+    var outsideStatus by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(outsideOn, located) {
+        if (!outsideOn || !located) return@LaunchedEffect
+        while (isActive) {
+            outsideStatus = if (outside == null) "Finding your area and the weather there…" else null
+            val r = withContext(Dispatchers.IO) { runCatching { fetchOutside(context) } }
+            var ok = false
+            r.onSuccess { o -> if (o != null) { outside = o; outsideStatus = null; ok = true } else outsideStatus = "Couldn't find where you are. Is Location on?" }
+                .onFailure { e -> android.util.Log.w("Abacus", "outside temperature", e); outsideStatus = "Couldn't reach the weather service. Check the connection." }
+            // Every 10 minutes; after a failure, try again in half a minute.
+            delay(if (ok) 10 * 60_000L else 30_000L)
+        }
+    }
+    val air = sensors.firstOrNull { it.type == Sensor.TYPE_AMBIENT_TEMPERATURE }?.let { readings[it.name] }
+    val other = sensors.filter { it.type != Sensor.TYPE_AMBIENT_TEMPERATURE }.firstNotNullOfOrNull { s -> readings[s.name]?.let { s to it } }
+    val (main, mainLabel) = when {
+        air != null -> air to "Air temperature"
+        other != null -> other.second to heatSensorLabel(other.first)
+        outside != null -> outside!!.temp to "Outside, where you are"
+        else -> battery to "Phone temperature (battery)"
+    }
+    val waiting = sensors.isNotEmpty() && readings.isEmpty()
+    val history = rememberHistory(main, 90)
     Segmented(listOf("°C", "°F"), if (fahrenheit) 1 else 0, Modifier.fillMaxWidth()) { fahrenheit = it == 1; prefs(context).edit().putBoolean("fahrenheit", fahrenheit).apply() }
     Panel {
         Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val main = air?.values?.get(0) ?: battery
             // A thermometer drawing whose red column follows the reading (from -10 to 50 °C).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 Canvas(Modifier.width(48.dp).height(190.dp)) {
@@ -514,15 +558,37 @@ private fun Temperature() {
                 }
                 Column {
                     Text(main?.let { t(it) } ?: "-", style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.SemiBold), color = p.text)
-                    Text(if (air != null) "Air temperature" else "Phone temperature", style = MaterialTheme.typography.titleSmall, color = p.accent)
+                    Text(mainLabel, style = MaterialTheme.typography.titleSmall, color = p.accent)
                     if (humidity != null) Text("Humidity %.0f%%".format(humidity.values[0]), style = MaterialTheme.typography.titleSmall, color = p.text)
+                    else if (mainLabel.startsWith("Outside") && outside?.humidity != null) Text("Humidity %.0f%%".format(outside!!.humidity), style = MaterialTheme.typography.titleSmall, color = p.text)
                 }
             }
             Trace(history)
-            if (air == null) Hint("This phone has no air thermometer, so this is its battery's temperature. Off the charger and left alone for 15 minutes, it comes close to the room's.")
+            if (waiting) Text("Waiting for the phone's thermometer: it only reports when the temperature changes. Meanwhile this is " + (if (outside != null) "the air outside." else "the phone's own temperature."),
+                style = MaterialTheme.typography.bodySmall, color = p.secondaryText, textAlign = TextAlign.Center)
+            else if (air == null && other == null) Text("This phone doesn't share a thermometer with apps, so Abacus shows the air outside where you are (turn it on below), or the phone's own temperature.",
+                style = MaterialTheme.typography.bodySmall, color = p.secondaryText, textAlign = TextAlign.Center)
         }
     }
-    Panel(title = "Inside the phone") {
+    Panel(title = "Outside") {
+        if (!outsideOn || !located) ListRow("Show the temperature outside", subtitle = "Uses your rough location (about a kilometre) and the free Open-Meteo weather service. Nothing else is sent", icon = WonderIcons.LocationOn,
+            trailing = { WButton("Turn on", { if (located) { outsideOn = true; prefs(context).edit().putBoolean("outsideTemp", true).apply() } else askLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }, kind = ButtonKind.Primary) })
+        else {
+            val o = outside
+            ListRow("Air", subtitle = outsideStatus ?: o?.let { "Updated " + java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(it.at)) }, trailing = { Text(o?.let { t(it.temp) } ?: "-", color = p.text, style = MaterialTheme.typography.titleMedium) })
+            if (o?.feels != null) { PanelDivider(16.dp); ListRow("Feels like", trailing = { Text(t(o.feels), color = p.text) }) }
+            if (o?.humidity != null) { PanelDivider(16.dp); ListRow("Humidity", trailing = { Text("%.0f%%".format(o.humidity), color = p.text) }) }
+            PanelDivider(16.dp)
+            ListRow("Turn off", onClick = { outsideOn = false; outside = null; prefs(context).edit().putBoolean("outsideTemp", false).apply() })
+        }
+    }
+    Panel(title = "Sensors on this phone") {
+        if (sensors.isEmpty()) ListRow("No heat sensors shared with apps", subtitle = "Only the battery's temperature is available")
+        sensors.forEachIndexed { i, s ->
+            if (i > 0) PanelDivider(16.dp)
+            ListRow(heatSensorLabel(s), subtitle = s.name + " · " + s.vendor, trailing = { Text(readings[s.name]?.let { t(it) } ?: "waiting", color = p.text) })
+        }
+        if (sensors.isNotEmpty()) PanelDivider(16.dp)
         ListRow("Battery", trailing = { Text(battery?.let { t(it) } ?: "-", color = p.text) })
         PanelDivider(16.dp)
         ListRow("Heat level", subtitle = "How hot Android thinks the phone is running", trailing = {

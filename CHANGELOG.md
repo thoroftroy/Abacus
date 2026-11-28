@@ -1,5 +1,15 @@
 # Abacus changelog
 
+## v0.8.0
+
+- The ruler is now a real ruler: it fills the whole screen and starts at the very top edge, so you rest one end of the object against the top of the phone. Centimetres and millimetres run down the left, inches in sixteenths down the right, both at once
+- Two red handles mark the ends (drag either, or tap near one to move it), with a light click every centimetre or half inch
+- Measure things longer than the phone: "Add and move on" keeps a running total while you walk the phone along
+- Checking the scale with a bank card is direct: drag the blue line to the card's end instead of nudging a slider
+- Temperature: the phone's own heat sensors are all listed, including a maker's infrared or skin sensor when the phone shares one, and used for the reading
+- Temperature outside where you are (opt-in): uses your rough location and the free Open-Meteo weather service, refreshed every 10 minutes, with feels-like and humidity. Phones without an air thermometer (most, including Pixels) now show a real air temperature here
+- Camera ruler: each mark uses the steady middle reading of the last moment, so a shaky hand or the press of the button no longer throws the answer off, and it tells you when to hold steadier
+
 ## v0.7.1
 
 - The moving background holds still while Battery Saver is on, so it uses next to no power then. It still changes with what the app is doing
